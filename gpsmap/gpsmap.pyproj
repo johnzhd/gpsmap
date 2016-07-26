@@ -33,6 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="static\" />
+    <Folder Include="system\" />
     <Folder Include="templates\" />
   </ItemGroup>
   <ItemGroup>
@@ -53,6 +54,13 @@
     <Content Include="static\opoints.js" />
     <Content Include="static\react-dom.min.js" />
     <Content Include="static\react.min.js" />
+    <Content Include="system\emperor.ini" />
+    <Content Include="system\emperor.uwsgi.service" />
+    <Content Include="system\mongo_gpsmap.js" />
+    <Content Include="system\mongo_admin.js" />
+    <Content Include="system\mongod_auth.conf" />
+    <Content Include="system\mongod.conf" />
+    <Content Include="system\nginx.conf" />
     <Content Include="templates\demo.html" />
     <Content Include="templates\points_template.html" />
     <Content Include="templates\template_html.html" />
