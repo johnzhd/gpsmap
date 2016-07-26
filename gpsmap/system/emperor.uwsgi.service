@@ -1,0 +1,24 @@
+# Write this file to: /etc/systemd/system/emperor.uwsgi.service
+#   run service as: systemctl start emperor.uwsgi.service
+# check service as: systemctl status emperor.uwsgi.service
+#  stop service as: systemctl stop emperor.uwsgi.service
+#
+# This ini for service 
+
+[Unit]
+Description=uWSGI Emperor
+After=syslog.target
+
+[Service]
+ExecStart=/usr/local/bin/uwsgi --ini /etc/uwsgi/emperor.ini
+# Requires systemd version 211 or newer
+RuntimeDirectory=/tmp/uwsgi
+Restart=always
+KillSignal=SIGQUIT
+Type=notify
+#StandardError=syslog  ## in uwsgi.ini match logto
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
+
