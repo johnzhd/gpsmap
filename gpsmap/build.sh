@@ -42,7 +42,8 @@ cp -f ./system/mongod_auth.conf /etc/mongod.conf
 
 ###
 
+systemctl start mongod
 
-
+systemctl start emperor.uwsgi.service
 
 
