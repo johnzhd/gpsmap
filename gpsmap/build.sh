@@ -31,7 +31,10 @@ cp -f ./system/nginx.conf                      /etc/nginx/conf.d/
 cp -f ./system/mongod.conf /etc/
 mongod -f /etc/mongod.conf
 
-mongo ./system/mongo.js
+mongo 127.0.0.1:27017/admin ./system/mongo_admin.js 
+mongo 127.0.0.1:27017/gpsmap ./system/mongo_gpsmap.js 
+
+python ./db_build.py
 
 mongod -f /etc/mongod.conf --shutdown
 cp -f ./system/mongod_auth.conf /etc/mongod.conf
