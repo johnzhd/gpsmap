@@ -34,6 +34,7 @@ mongod -f /etc/mongod.conf
 mongo 127.0.0.1:27017/admin ./system/mongo_admin.js 
 mongo 127.0.0.1:27017/gpsmap ./system/mongo_gpsmap.js 
 
+pip install pymongo
 python ./db_build.py
 
 mongod -f /etc/mongod.conf --shutdown
