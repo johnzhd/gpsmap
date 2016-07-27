@@ -1,5 +1,37 @@
 #!/bin/sh
 
+## system 
+
+curl http://mirrors.aliyun.com/repo/Centos-7.repo | grep -v aliyuncs > /etc/yum.repos.d/CentOS-Base.repo
+
+cp -f ./system/nginx.repo    /etc/yum.repos.d/
+cp -f ./system/mongodb.repo  /etc/yum.repos.d/
+
+yum makecache
+
+yum install -y mongodb-org
+
+yum install -y nginx
+
+## python
+
+yum -y groupinstall  "Development Tools"
+yum -y install python-devel
+
+
+mkdir ~/buildtemp/
+curl https://bootstrap.pypa.io/get-pip.py > ~/buildtemp/get-pip.py
+python ~/buildtemp/get-pip.py
+
+pip install uwsgi
+pip install Flask
+pip install Flask_restful
+
+pip install pymongo
+pip install utm
+
+
+## project
 # prepare
 
 mkdir /tmp/uwsgi
@@ -43,7 +75,9 @@ cp -f ./system/mongod_auth.conf /etc/mongod.conf
 ###
 
 systemctl start mongod
+chkconfig mongod on
 
 systemctl start emperor.uwsgi.service
+systemctl enabled emperor.uwsgi.service
 
 
