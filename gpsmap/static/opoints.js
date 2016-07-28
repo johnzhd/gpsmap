@@ -83,7 +83,7 @@ function create_time_start_end() {
     function SliderControl() {
         // 默认停靠位置和偏移量
         this.defaultAnchor = BMAP_ANCHOR_BOTTOM_RIGHT;
-        this.defaultOffset = new BMap.Size(5, 30);
+        this.defaultOffset = new BMap.Size(5, 35);
     }
 
     // 通过JavaScript的prototype属性继承于BMap.Control

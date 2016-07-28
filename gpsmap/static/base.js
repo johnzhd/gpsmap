@@ -1,11 +1,57 @@
 ﻿// 百度地图API功能
 
 var my_global_map = null;
-
+var global_tools = null;
 
 // ToDo Show gps when click on map
 function base_showInfo(e) {
     console.log(e.point.lng + ", " + e.point.lat);
+}
+
+function base_create_base_bar(){
+    function BaseBarControl() {
+        // 默认停靠位置和偏移量
+        this.defaultAnchor = BMAP_ANCHOR_BOTTOM_RIGHT;
+        this.defaultOffset = new BMap.Size(5, 5);
+    }
+    BaseBarControl.prototype = new BMap.Control();
+    BaseBarControl.prototype.initialize = function (map) {
+        var a1 = document.createElement("a");
+        a1.href = "/name";
+        a1.id = "ida";
+        a1.innerHTML ="首页";
+        var input1 = document.createElement("input");
+        input1.type = "button";
+        input1.id = "idShow";
+        input1.value="显示";
+        input1.onclick=function(event){ShowMe();};
+        var input2 = document.createElement("input");
+        input2.type = "button";
+        input2.id = "idHidden";
+        input2.value="辅助";
+        input2.onclick=function(event){HiddenMe();};
+
+        var total = document.createElement("div");
+        total.appendChild(a1);
+        total.appendChild(input1);
+        total.appendChild(input2);
+        map.getContainer().appendChild(total);
+        // 将DOM元素返回
+        return total;
+    };
+    var myBaseBarControl = new BaseBarControl();
+    return myBaseBarControl;
+}
+
+function base_basecontrol(){
+if (global_tools){
+    return;
+}
+    global_tools = base_create_base_bar();
+my_global_map.addControl(global_tools);
+
+    console.log("Add");
+return;
 }
 
 // Init map table
@@ -19,27 +65,16 @@ function base_InitMap(page){
     my_global_map.addControl(new BMap.MapTypeControl());          //添加地图类型控件
     my_global_map.setMapStyle({ style: 'grayscale' });
     
-    my_global_map.centerAndZoom(new BMap.Point(116.323862, 39.987064), 15);
+    my_global_map.centerAndZoom(new BMap.Point(108.372686, 22.823824), 15);
+    //my_global_map.centerAndZoom("南宁市", 15);
     
     my_global_map.addEventListener("click", base_showInfo);
 
-    var cr = new BMap.CopyrightControl({ anchor: BMAP_ANCHOR_BOTTOM_RIGHT });   //设置版权控件位置
-    my_global_map.addControl(cr); //添加版权控件
+    base_basecontrol();
+}
 
-    var bs = my_global_map.getBounds();   //返回地图可视区域
-    const style = 'background: rgb(255, 255, 255); padding: 2px 6px; text-align: center; color: rgb(0, 0, 0); line-height: 1.3em; font-family: arial,sans-serif; font-size: 12px; font-style: normal; font-variant: normal; border-top-color: rgb(139, 164, 220); border-bottom-color: rgb(139, 164, 220); border-left-color: rgb(139, 164, 220); border-top-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-bottom-style: solid; border-left-style: solid; white-space: nowrap; font-size-adjust: none; font-stretch: normal; box-shadow: 2px 2px 3px rgba(0,0,0,0.35);';
-    if (!page) {
-        page = 'device';
-    }
-    cr.addCopyright({
-        id: 1,
-        content: '<div><a href="/name" ' + style + '\' >进入列表</a>'
-            + '<input type="button" id="idShow" value="显示" onclick="ShowMe()"  style=\'' + style + '\' />'
-            + '<input type="button" id="idHidden" value="辅助" onclick="HiddenMe()" style=\'' + style + '\' />'
-            + '</div>',
-        bounds: bs
-    });
-    console.log("Add");
+function base_auto_position(points){
+    my_global_map.setViewport(points);
 }
 
 // clear one point
@@ -75,12 +110,14 @@ function base_ClearPoints(points) {
 
 // show points
 function base_ShowPoints(points) {
+    var po_list = Array();
     for (var i = 0; i < points.length; i++) {
         if (!points[i]) {
             continue;
         }
         try{
             if (points[i].marker) {
+                po_list.push(points[i].point);
                 my_global_map.addOverlay(points[i].marker);
             }
         }
@@ -88,6 +125,7 @@ function base_ShowPoints(points) {
             console.log(e.message);
         }
     }
+    base_auto_position(po_list);
 }
 
 function base_HiddenPoints(points) {
@@ -298,7 +336,7 @@ function base_Label_Device(data) {
     // data
     // {"device", "time"}
     try {
-        return "[" + data["device"] + "] " + data["time"];
+        return data["device"];
     }
     catch (e) {
         console.log(data);
