@@ -537,7 +537,11 @@ class opt():
             print("{0} --- {1}".format(__name__, e))
         pass
     def show_namelist(self):
+        return self.show_name(None)
+    def show_name(self, name):
         f = {}
+        if name:
+            f['name'] = name
         c = {"_id": 0, "name": 1, "time": 1, "id": 1, "device": 1, "ocount": 1, "pcount": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -713,6 +717,13 @@ def unique_show_namelist():
     if not obj:
         return None
     ret = obj.show_namelist()
+    return ret
+
+def unique_show_name(name):
+    obj = get_unique_opt()
+    if not obj:
+        return None
+    ret = obj.show_name(name)
     return ret
 
 def unique_set_device(device, la, lo):

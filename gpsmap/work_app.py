@@ -107,7 +107,11 @@ def upload():
 def show():
     args = parser.parse_args()
     try:
-        ret = backend.unique_show_namelist()
+        ret = None
+        if args['name']:
+            ret = backend.unique_show_name(args['name'])
+        else:
+            ret = backend.unique_show_namelist()
         if ret:
             data = { "success": 1,
                     "data": ret}
