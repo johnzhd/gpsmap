@@ -9,12 +9,15 @@ import threading
 import time
 
 import calc_postion
+from pprint import pprint
+
+import md5
 
 
+global_db_name = "gpsmapName"
+global_db_url = "mongodb://gpsmap:gpsmap@127.0.0.1:27017/"+global_db_name
+# global_db_url = "mongodb://gpsmap:gpsmap@192.168.228.129:27017/" + global_db_name
 
-global_db_url = "mongodb://gpsmap:gpsmap@127.0.0.1:27017/gpsmap"
-# global_db_url = "mongodb://gpsmap:gpsmap@192.168.228.129:27017/gpsmap"
-global_db_name = "gpsmap"
 global_db_origin_collection = "origin"
 global_db_calc_collection = "calc"
 global_db_user_collection = "userextern"
@@ -27,12 +30,40 @@ global_key_list =  "items"
 global_key_sendtime = "sendtime"
 global_key_uid = "id"
 global_key_dis = "distance"
+global_key_name = "name"
 global_key_device = "device"
 
 global_care_keys = [global_key_la, global_key_lo, global_key_list, global_key_sendtime]
 
 global_origin_keys = [global_key_uid, global_key_la, global_key_lo, global_key_sendtime, global_key_dis]
 
+def md5String(s):
+    try:
+        print(type(s))
+        s = s.encode(encoding="utf-8")
+        print(type(s))
+        bin = md5.new(s).hexdigest()
+        return bin
+    except Exception as e:
+        print("{0} --- {1}".format(__name__, e))
+        return None
+
+def CreateUID(obj):
+    '''
+    change to use name md5
+    '''
+    global global_key_uid
+    global global_key_name
+    if global_key_name in obj:
+        o = obj[global_key_name]
+
+        m = md5String(o)
+        if not m:
+            return None
+        return "{0:08d}{1}".format(len(o), m)
+    elif global_key_uid in obj:
+        return obj[global_key_uid]
+    return None
 
 
 """
@@ -93,7 +124,10 @@ def time_format(date):
     return date.strftime(global_timeformat_string)
 
 def string_to_time(s):
-    return datetime.datetime.strptime(s, global_timeformat_string)
+    try:
+        return datetime.datetime.strptime(s, global_timeformat_string)
+    except Exception as e:
+        return None
 
 
 def string_standard(s):
@@ -109,22 +143,17 @@ def time_now():
 def string_time_to_unit(start, check, tunit):
     try:
         c = string_to_time(check)
-        if not tunit:
-            tunit = 60
-
-        s = start
-        if s > c:
-            d = s - c
-            ret = d.total_seconds() / tunit
-            return int(ret)
+        d = c - start
+        ret = d.total_seconds() / tunit
+        return int(ret)
     except Exception as e:
         return None
 
-def string_min_whole(s, now, tunit):
+def string_min_whole(s, start, tunit):
     if not tunit:
         tunit = 60
     de = datetime.timedelta(seconds = s * tunit)
-    return time_format(now - de)
+    return time_format(start + de)
 
 def fretch_gps_from_data(data):
     try:
@@ -150,6 +179,7 @@ class opt():
     global global_key_sendtime
     global global_key_uid
     global global_key_dis
+    global global_key_name
     global global_key_device
     global global_care_keys
     global global_origin_keys
@@ -160,11 +190,21 @@ class opt():
     def __init__(self):
         self.connect = None
         self.queue = Queue.Queue()
-        self.thread = threading.Thread(target=self.consumer)
-        self.thread.start()
+
+        self.connect = pymongo.MongoClient(global_db_url)
+        # self.thread = threading.Thread(target=self.consumer)
+        # self.thread.start()
         time.sleep(1)
     def producer(self, data):
-        self.queue.put(data)
+        # self.queue.put(data)
+        # return true
+
+        obj = self.data_to_obj(data)
+        if not obj:
+            return None
+        if global_key_la not in obj or global_key_lo not in obj or global_key_list not in obj:
+            return None
+        return self.consumer_action_bulk(obj)
     def consumer(self):
         while True:
             try:
@@ -175,6 +215,21 @@ class opt():
             except Exception as e:
                 print("{0} --- {1}".format(__name__, e))
                 pass
+    def consumer_action_bulk(self, obj):
+        try:
+            count = self.obj_to_bulk(obj, global_db_origin_collection, global_db_user_collection )
+            return count
+        except Exception as e:
+            print("{0} ---- {1}".format(__name__, e))
+            pass
+        return None
+    def consumer_action_one(self, obj):
+        for origin in self.parser_obj(obj):
+            self.insert_origin_postion( origin )
+            self.update_insert_userinfo( origin )
+    def consumer_action(self, obj):
+        # self.consumer_action_one(obj)
+        self.consumer_action_bulk(obj)
     def consumer_core(self):
         print( "In consumer" )
         try:
@@ -190,24 +245,17 @@ class opt():
                 if global_key_la not in obj or global_key_lo not in obj or global_key_list not in obj:
                     continue
                 
-                for origin in self.parser_obj(obj):
-                    self.insert_origin_postion( origin )
-                    self.update_insert_userinfo( origin )
-
-                    #pair = self.get_last_postion(usr[global_key_uid])
-                    #if not pair or len(pair) < 2:
-                    #    continue
-                    #r_calc = calc_postion.calc(origin[global_key_la], origin[global_key_lo], origin[global_key_dis],
-                    #                           pair[0][global_key_la], pair[0][global_key_lo], pair[0][global_key_dis],
-                    #                           pair[1][global_key_la], pair[1][global_key_lo], pair[1][global_key_dis],
-                    #                           global_EP)
-                    #if not r_calc:
-                    #    continue
-                    #self.insert_calc_postion( origin[global_key_uid], r_calc[0], r_calc[1], r_calc[2] )
+                self.consumer_action(obj)
         except Exception as e:
             print("{0} --- {1}".format(__name__, e))
             pass
-
+    def bulk_list(self, name, bulk):
+        db = self.connect.get_database(global_db_name)
+        collection = db.get_collection(name)
+        bulk = collection.initialize_unordered_bulk_op()
+        ret = collection.bulk_write(bulk)
+        count = ret.inserted_count + ret.modified_count + ret.upserted_count
+        return count
     def data_to_obj(self, data):
         try:
             obj = json.loads(data)
@@ -215,6 +263,68 @@ class opt():
         except Exception as e:
             print("{0} --- {1}".format(__name__, e))
             return None
+    def obj_to_bulk(self, obj, opoints, users):
+        if not obj:
+            return None
+        db = self.connect.get_database(global_db_name)
+        o_coll = db.get_collection(opoints)
+        u_coll = db.get_collection(users)
+        o_bulk = o_coll.initialize_unordered_bulk_op()
+        u_bulk = u_coll.initialize_unordered_bulk_op()
+
+        for origin in self.parser_obj(obj):
+            data = self.origin_to_insert(origin)
+            if not data:
+                continue
+            o_bulk.insert( data )
+
+
+            f, d = self.origin_to_update(origin)
+            if not f or not d:
+                continue
+
+            u_bulk.find(f).upsert().update(d)
+
+        result = o_bulk.execute()
+        count = result['nInserted']
+        result = u_bulk.execute()
+        # count = result['nUpserted'] + result['nModified']
+        return count > 0
+    def origin_to_insert(self, origin):
+        try:
+            for n in global_origin_keys:
+                if n not in origin:
+                    return None
+            data = {}
+            data[global_key_uid] = str(origin[global_key_uid])
+            data[global_key_dis] = str(origin[global_key_dis])
+            data[global_key_sendtime] = str(origin[global_key_sendtime])
+            data["loc"] = { "type": "Point", "coordinates": [ float(origin[global_key_lo]), float(origin[global_key_la]) ] }
+            data["time"] = time_now()
+            return data
+        except Exception as e:
+            pass
+        return None
+    def origin_to_update(self, origin):
+        try:
+            data = origin.copy()
+            for key in global_origin_keys[1:]:
+                if key in data:
+                    del data[key]
+            data["time"] = time_now()
+
+            f = {global_key_uid: data[global_key_uid]}
+            d = {}
+            if "device" in data:
+                d["$addToSet"] = {"device": data["device"]}
+                del data["device"]
+            d["$set"] = data
+            d["$inc"] = {"ocount": 1}
+            return f, d
+        except Exception as e:
+            pass
+        return None, None
+
     def parser_obj(self, obj):
         for i in global_care_keys:
             if i not in obj:
@@ -225,12 +335,17 @@ class opt():
         unique[global_key_lo] = obj[global_key_lo]
         if global_key_device in obj:
             unique[global_key_device] = obj[global_key_device]
-
         for i in obj[global_key_list]:
-            ret = unique.copy()
-            if global_key_uid not in i or global_key_dis not in i:
+            if global_key_dis not in i:
                 continue
+
+            uid = CreateUID(i)
+            if not uid:
+                continue
+
+            ret = unique.copy()
             ret.update(i)
+            ret[global_key_uid] = uid
             yield ret
 
     def get_last_postion(self, uid):
@@ -265,15 +380,9 @@ class opt():
             pass
         return None
     def insert_origin_postion(self, obj):
-        for n in global_origin_keys:
-            if n not in obj:
-                return None
-        data = {}
-        data[global_key_uid] = obj[global_key_uid]
-        data[global_key_dis] = obj[global_key_dis]
-        data[global_key_sendtime] = obj[global_key_sendtime]
-        data["loc"] = { "type": "Point", "coordinates": [ float(obj[global_key_lo]), float(obj[global_key_la]) ] }
-        data["time"] = time_now()
+        data = self.origin_to_insert(obj)
+        if not data:
+            return None
         try:
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_origin_collection)
@@ -310,23 +419,10 @@ class opt():
             print("{0} --- {1}".format(__name__, e))
         return 0
     def update_insert_userinfo(self, obj):
-        data = obj.copy()
-        for key in global_origin_keys[1:]:
-            if key in data:
-                del data[key]
-        data["time"] = time_now()
         try:
-            f = {global_key_uid: data[global_key_uid]}
-            d = {}
-            if "device" in obj:
-                d["$addToSet"] = {"device": data["device"]}
-                del data["device"]
-
-            
-            data["ocount"] = self.get_counts(f, global_db_origin_collection)
-            data["pcount"] = self.get_counts(f, global_db_calc_collection)
-
-            d["$set"] = data
+            f, d = self.origin_to_update(obj)
+            if not f or not d:
+                return None
             
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_user_collection)
@@ -357,47 +453,13 @@ class opt():
             print("{0} --- {1}".format(__name__, e))
             pass
         return None
-
-    def check_and_calc(self, id, start, end, tunit):
-        # find old result by id
-        # try calc new
-        # 
-        f = {}
-        f["id"] = id
+    def get_origin_points_data_from_db(self, id, start, end):
+        f = {"id":id}
         c = {"_id": 0, "loc.coordinates":1, "time":1, "distance":1}
+        ret = []
         try:
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_calc_collection)
-
-            ## old time zone
-            ## which already calc
-            #if end:
-            #    ## if newer time have result
-            #    ## get old and then return
-            #    f["time"] = {"$gte":end}
-            #    r = collection.find(f, c).count()
-            #    if r > 0:
-            #        ## reset time limit start --> end
-            #        f["time"] = {"$lte":end}
-            #        if start:
-            #            f["time"]["$gte"] = start
-            #        r = collection.find(f, c).sort("time", pymongo.ASCENDING)
-            #        ret = []
-            #        for d in r:
-            #            try:
-            #                ret.append({"id": id,
-            #                        "time": d["time"],
-            #                        "latitude": d["loc"]["coordinates"][1],
-            #                        "longitude": d["loc"]["coordinates"][0],
-            #                        "distance": d["distance"]
-            #                        })
-            #            except Exception as e:
-            #                # no key in d
-            #                print("{0} --- {1}".format(__name__, e))
-            #                pass
-            #        print("debug return {0}".format("old calc enough"))
-            #        return ret
-
 
             if start:
                 f["time"] = {}
@@ -407,69 +469,71 @@ class opt():
                     f["time"] = {}
                 f["time"]["$lte"] = end
 
-            ret = []
-            new_ret = []
-            max_time = ""
 
-            ### push already calc
-            #r = collection.find(f, c).sort("time", pymongo.ASCENDING)
-            #for d in r:
-            #    ret.append({"id": id,
-            #                "time": d["time"],
-            #                "latitude": d["loc"]["coordinates"][1],
-            #                "longitude": d["loc"]["coordinates"][0],
-            #                "distance": d["distance"]
-            #                })
-            #    if "time" in d and d["time"] > max_time:
-            #        max_time = d["time"]
-
-            ## calc new
-            if max_time:
-                if "time" not in f:
-                    f["time"] = {}
-                f["time"]["$gte"] = max_time
             origin_collection = db.get_collection(global_db_origin_collection)
             r = origin_collection.find(f, c).sort("time", pymongo.ASCENDING)
-            origin_list = {}
-            start_time = datetime.datetime.now()
-            unit_time = 0
-            try:
-                unit_time = int(tunit)
-            except Exception as e:
-                unit_time = 0
             for d in r:
-                if not d:
+                ret.append(d)
+            return ret
+        except Exception as e:
+            print("{0} --- {1}".format(__name__, e))
+        return ret
+    def cut_list_by_time(self, data, tunit):
+        origin_list = {}
+        base_time = None
+        if data and data[0] and "time" in data[0]:
+            base_time = string_to_time(data[0]["time"])
+        if not base_time:
+            return origin_list
+        for d in data:
+            if not d:
+                continue
+            try:
+                minutes = string_time_to_unit(base_time, d["time"], tunit)
+                if minutes is None:
                     continue
-                try:
-                    minutes = string_time_to_unit(start_time, d["time"], unit_time)
-                    if not minutes:
-                        continue
-                    if minutes not in origin_list:
-                        origin_list[minutes] = []
-                    origin_list[minutes].append(d)
-                except Exception as e:
-                    continue
-                    pass
-            for minutes in origin_list:
-                r = self.zone_and_calc(origin_list[minutes], id, string_min_whole(minutes, start_time, unit_time))
-                if r:
-                    new_ret.append(r)
-            if new_ret:
-                ## calc record
-                ## self.insert_calc_list(new_ret)
-                for d in new_ret:
-                    ret.append({"id": id,
+                if minutes not in origin_list:
+                    origin_list[minutes] = []
+                origin_list[minutes].append(d)
+            except Exception as e:
+                continue
+        return origin_list, base_time
+    def check_and_calc_with_data(self, data, tunit, id):
+        try:
+            tunit = int(tunit)
+        except Exception as e:
+            tunit = 60
+        print("Data length: {0}".format(len(data)))
+        pprint(data)
+
+        dic_data, base_time = self.cut_list_by_time(data, tunit)
+        if not dic_data:
+            return None
+
+        print("dic_data length: {0}".format(len(dic_data)))
+
+        new_ret = []
+        for minutes in dic_data:
+            r = self.zone_and_calc(dic_data[minutes], id, string_min_whole(minutes, base_time, tunit))
+            if r:
+                new_ret.append(r)
+
+        ret = []
+        for d in new_ret:
+            ret.append({"id": id,
                                 "time": d["time"],
                                 "latitude": d["loc"]["coordinates"][1],
                                 "longitude": d["loc"]["coordinates"][0],
                                 "distance": d["distance"]
                                 })
-            print("debug return {0}".format("365"))
-            return ret
-        except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
-            pass
-        return None
+        return ret
+    def check_and_calc(self, id, start, end, tunit):
+        data = self.get_origin_points_data_from_db(id, start, end)
+        if not data:
+            return None
+
+        return self.check_and_calc_with_data(data, tunit, id)
+
     def zone_and_calc(self, l, id, tm):
         if len(l) < 3:
             return None
@@ -563,7 +627,6 @@ class opt():
             if "time" not in f:
                 f["time"]={}
             f["time"]["$lte"]=end
-        print(f)
         c = {"_id":0, "loc.coordinates": 1, "time": 1, "distance": 1, "sendtime": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -681,8 +744,7 @@ def unique_push_data(data):
     obj = get_unique_opt()
     if not obj:
         return None
-    obj.producer(data)
-    return True
+    return obj.producer(data)
 
 
 def unique_check_namelist(name):

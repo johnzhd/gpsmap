@@ -130,6 +130,11 @@ def calc_list_core( l_points, EP, func_fretch ):
     npos2 = 0
     npos3 = 0
     list_count = len(l_points)
+
+    ret_list = {}
+    ret_list[3]=[]
+    ret_list[5]=[]
+
     while npos1 < list_count - 2:
         try:
             la1, lo1, dis1 = func_fretch(l_points[npos1])
@@ -168,27 +173,92 @@ def calc_list_core( l_points, EP, func_fretch ):
                     u3 = utm_point( *utm.from_latlon(la3,lo3), r=dis3)
                 except Exception as e:
                     continue
-
-                if s == 2 or s == 3:
-                    d1 = distance(p1, u3)
-                    if math.fabs(d1 - u3.r) < EP:
-                        return p1
-                elif s == 4:
-                    d1 = distance(p1, u3)
-                    d2 = distance(p2, u3)
-                    b1 = u3.r - EP < d1 and d1 < u3.r + EP
-                    b2 = u3.r - EP < d2 and d2 < u3.r + EP
-                    if not b1 and not b2:
-                        continue
-                    elif not b1 and b2:
-                        return p2
-                    elif b1 and not b2:
-                        return p1
-                    else:
-                        d1 = math.fabs(d1 - u3.r)
-                        d2 = math.fabs(d2 - u3.r)
-                        return p1 if d1 < d2 else p2
+                
+                ret = calc_list_core_cross_point(s, p1, p2, u3, EP)
+                if ret:
+                    return ret
+                '''
+                ret,level = calc_list_core_cover_zone(s, p1, p2, u3)
+                if ret:
+                    if level == 1:
+                        return ret
+                    ret_list[level].append(ret)
+    if len(ret_list[3]) > 0:
+        return ret_list[3][0]
+    if len(ret_list[5]) > 0:
+        return ret_list[5][0]
+    '''
     return None
+
+
+def calc_list_core_cross_point(s, p1, p2, u3, EP):
+    if s == 2 or s == 3:
+        d1 = distance(p1, u3)
+        if math.fabs(d1 - u3.r) < EP:
+            return p1
+    elif s == 4:
+        d1 = distance(p1, u3)
+        d2 = distance(p2, u3)
+        b1 = u3.r - EP < d1 and d1 < u3.r + EP
+        b2 = u3.r - EP < d2 and d2 < u3.r + EP
+        if not b1 and not b2:
+            return None
+        elif not b1 and b2:
+            return p2
+        elif b1 and not b2:
+            return p1
+        else:
+            d1 = math.fabs(d1 - u3.r)
+            d2 = math.fabs(d2 - u3.r)
+            return p1 if d1 < d2 else p2
+    return None
+
+def calc_list_core_cover_zone(s, p1, p2, u3):
+    if s in [2,3]:
+        d1 = distance(p1,u3)
+        if d1 < u3.r:
+            p1.r = u3.r - d1
+            if p1.r > d1:
+                p1.r = d1
+            return p1, 5
+    elif s == 4:
+        d1 = distance(p1, u3)
+        d2 = distance(p2, u3)
+        b1 = u3.r < d1 and d1 < u3.r
+        b2 = u3.r < d2 and d2 < u3.r
+        if True not in [b1, b2]:
+            return None, None
+        elif not b1 and b2:
+            return calc_point_then_middle(u3, p2, d2), 1
+        elif b1 and not b2:
+            return calc_point_then_middle(u3, p1, d1), 1
+        else:
+            return calc_middle_then_point(u3, p1, d1, p2, d2), 3
+    return None
+
+def calc_point_then_middle(u3, p, d):
+    ret = utm_point(zone=p.zone, mark = p.mark, r=(u3.r - d)/2 )
+    rate = d + ret.r / d
+    ret.x = (p.x - u3.x) * rate
+    ret.y = (p.y - u3.y) * rate
+    return ret
+
+def calc_middle_then_point(u3, p1,d1, p2,d2):
+    ret = calc_middle_point(p1, p2)
+    d1 = distance(u3, ret)
+    d2 = u3.r - d1
+    if d2 > d1:
+        d2 = d1
+    if ret.r > d2:
+        ret.r = d2
+    return ret
+
+def calc_middle_point(p1, p2):
+    d1 = distance(p1, p2)
+    ret = utm_point(zone=p.zone, mark = p.mark, r=d1/2 )
+    ret.x = (p1.x + p2.x)/2
+    ret.y = (p1.y + p2.y)/2
+    return ret
 
 def calc_list_precheck(l_points, func_fretch):
     ret = {}
