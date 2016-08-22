@@ -79,7 +79,7 @@ input[type="button"],input[type="text"] {
     background: rgb(255, 255, 255);
     padding: 2px 6px;
     text-align: right;
-    width: 20px;
+    width: 40px;
     color: rgb(0, 0, 0);
     line-height: 1.3em;
     font-family: arial,sans-serif;
@@ -105,7 +105,7 @@ input[type="button"],input[type="text"] {
     background: rgb(255, 255, 255);
     padding: 2px 6px;
     text-align: left;
-    width: 30px;
+    width: 40px;
     color: rgb(0, 0, 0);
     line-height: 1.3em;
     font-family: arial,sans-serif;

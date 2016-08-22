@@ -1,8 +1,11 @@
+# -*- coding: utf-8 -*-
 import calc_postion
 import datetime
 
 import backend
 import json
+
+import io
 
 from flask import Flask, render_template, make_response
 from flask import request
@@ -16,7 +19,7 @@ parser = reqparse.RequestParser()
 for pa in ['la1', 'lo1', 'd1',
            'la2', 'lo2', 'd2',
            'la3', 'lo3', 'd3', 'EP', 'data', 'name', 'id',
-           'start', 'end', 'tunit',
+           'start', 'end', 'tunit', 'count',
            'device', 'action', 'latitude', 'longitude']:
     parser.add_argument(pa)
 
@@ -24,13 +27,15 @@ def html_template(page):
     args = parser.parse_args()
     args['name_js'] = page + '.js'
     args['name_css'] = page + '.css'
-    return render_template('points_template.html', **args);
+    return render_template('points_template.html', **args)
 
 def html(page):
     args = parser.parse_args()
     args['name_js'] = page + '.js'
     args['name_css'] = page + '.css'
-    return render_template('template_html.html', **args);
+    if not args["id"]:
+        args["id"] = ''
+    return render_template('template_html.html', **args)
 
 ## Show Main page
 @app.route('/', methods=['GET'])
@@ -45,18 +50,24 @@ def demo():
 ## Show calc points page
 @app.route('/cpoints', methods=['GET'])
 def cpoints():
-    return html_template("cpoints");
+    return html_template("cpoints")
 
 ## Show calc points page
 @app.route('/opoints', methods=['GET'])
 def opoints():
-    return html_template("opoints");
+    return html_template("opoints")
+
+
+## Show near points page
+@app.route('/npoints', methods=['GET'])
+def npoints():
+    return html_template("npoints")
 
 
 
 @app.route('/name', methods=['GET'])
 def js_page():
-    return html("name");
+    return html("name")
 
 
 
@@ -107,11 +118,7 @@ def upload():
 def show():
     args = parser.parse_args()
     try:
-        ret = None
-        if args['name']:
-            ret = backend.unique_show_name(args['name'])
-        else:
-            ret = backend.unique_show_namelist()
+        ret = backend.unique_show_name(args['name'] or None)
         if ret:
             data = { "success": 1,
                     "data": ret}
@@ -119,25 +126,6 @@ def show():
             return ret
     except Exception as e:
         print("{0} {1}".format(__name__, e))
-        pass
-    return '{"success": 0}'
-
-
-@app.route("/check", methods=['GET', 'POST'])
-def check():
-    args = parser.parse_args()
-    if 'name' not in args or not args['name']:
-        return '{"success": 0}'
-    try:
-        ret = backend.unique_check_namelist( args['name'])
-        if ret:
-            data = { "success": 1,
-                    "data": ret}
-            ret = json.dumps(data, indent= None)
-            return ret
-    except Exception as e:
-        print("{0} {1}".format(__name__, e))
-        pass
     return '{"success": 0}'
 
 
@@ -159,6 +147,26 @@ def result():
         pass
     return '{"success": 0}'
 
+@app.route("/near", methods=['GET', 'POST'])
+def near():
+    args = parser.parse_args()
+    try:
+        latitude = float(args['latitude'])
+        longitude = float(args['longitude'])
+        count = int(args['count'])
+        if not count:
+            count = 20
+        if latitude and longitude:
+            ret = backend.unique_NearPoint(latitude,longitude, count)
+            if ret:
+                data = {"success": 1,
+                    "data": ret}
+                ret = json.dumps(data, indent=None)
+                return ret
+    except Exception as e:
+        print("{0} {1}".format(__name__, e))
+        pass
+    return '{"success": 0}'
 
 
 @app.route("/origin", methods=['GET', 'POST'])
@@ -210,6 +218,18 @@ def device():
             return ret
     return '{"success": 0}'
 
-
-
+@app.route("/becareful", methods=['GET', 'POST'])
+def becareful():
+    args = parser.parse_args()
+    action = args["action"]
+    name = args["name"]
+    i = args["id"]
+    if name != "IknowPasswoRd" or i != "RisIngRiRi":
+        return '{"success": 0}'
+    if action not in ["users", "device", "points"]:
+        return '{"success": 0}'
+    ret = backend.unique_delete_information(action)
+    if ret:
+        return '{"success": 1}'
+    return '{"success": 0}'
 

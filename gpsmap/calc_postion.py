@@ -36,7 +36,7 @@ def calc_cross_point(A, B, EP = global_EP):
         return 1, None, None
     elif d < EP:
         return 5, None, None
-    
+
     ia = utm_point(zone=A.zone, mark = A.mark, r=EP)
     ib = utm_point(zone=A.zone, mark = A.mark, r=EP)
 
@@ -55,11 +55,11 @@ def calc_cross_point(A, B, EP = global_EP):
     drt = sqr(bb) - 4 * aa * cc
     if drt < 0:
         return 5, None, None
-    drt = math.sqrt (drt);
+    drt = math.sqrt(drt);
     ia.y = (-bb + drt) / 2 / aa
     ib.y = (-bb - drt) / 2 / aa
     if math.fabs(a) < EP:
-        ia.x = math.sqrt (sqr_k - sqr (ia.y))
+        ia.x = math.sqrt(sqr_k - sqr(ia.y))
         ib.x = -ia.x
     else:
         ia.x = (2 * b * ia.y + d) / -2 / a
@@ -68,10 +68,10 @@ def calc_cross_point(A, B, EP = global_EP):
     ia.y += A.y;
     ib.x += A.x;
     ib.y += A.y;
-    if math.fabs (ia.y - ib.y) < EP:
-        if abs (A.r + B.r - dd) < EP:
+    if math.fabs(ia.y - ib.y) < EP:
+        if abs(A.r + B.r - d) < EP:
             return 2, ia, ib
-        if abs (dd - (max (A.r, B.r) - min (A.r, B.r))) < EP:
+        if abs(d + min(A.r, B.r) - max(A.r, B.r)) < EP:
             return 3, ia, ib
     return 4, ia, ib
 
@@ -141,7 +141,7 @@ def calc_list_core( l_points, EP, func_fretch ):
             npos1 = npos1 + 1
             if not la1 or not lo1 or not dis1:
                 continue
-            u1 = utm_point( *utm.from_latlon(la1,lo1), r=dis1)
+            u1 = utm_point(*utm.from_latlon(la1,lo1), r=int(dis1))
         except Exception as e:
             continue
 
@@ -152,15 +152,14 @@ def calc_list_core( l_points, EP, func_fretch ):
                 npos2 = npos2 + 1
                 if not la2 or not lo2 or not dis2:
                     continue
-                u2 = utm_point( *utm.from_latlon(la2,lo2), r=dis2)
+                u2 = utm_point( *utm.from_latlon(la2,lo2), r=int(dis2))
             except Exception as e:
                 continue
 
             s, p1, p2 = calc_cross_point(u1, u2)
             if not p1 or not p2:
                 continue
-            p1.r = EP
-            p2.r = EP
+
 
 
             npos3 = npos2
@@ -170,47 +169,36 @@ def calc_list_core( l_points, EP, func_fretch ):
                     npos3 = npos3 + 1
                     if not la3 or not lo3 or not dis3:
                         continue
-                    u3 = utm_point( *utm.from_latlon(la3,lo3), r=dis3)
+                    u3 = utm_point( *utm.from_latlon(la3,lo3), r=int(dis3))
                 except Exception as e:
                     continue
                 
-                ret = calc_list_core_cross_point(s, p1, p2, u3, EP)
+                ret, level = calc_list_core_cross_point(s, p1, p2, u3, EP)
                 if ret:
-                    return ret
-                '''
-                ret,level = calc_list_core_cover_zone(s, p1, p2, u3)
-                if ret:
-                    if level == 1:
-                        return ret
-                    ret_list[level].append(ret)
-    if len(ret_list[3]) > 0:
-        return ret_list[3][0]
-    if len(ret_list[5]) > 0:
-        return ret_list[5][0]
-    '''
-    return None
+                    return ret, level
+    return None, 0
 
 
 def calc_list_core_cross_point(s, p1, p2, u3, EP):
     if s == 2 or s == 3:
         d1 = distance(p1, u3)
         if math.fabs(d1 - u3.r) < EP:
-            return p1
+            return p1, 5
     elif s == 4:
         d1 = distance(p1, u3)
         d2 = distance(p2, u3)
         b1 = u3.r - EP < d1 and d1 < u3.r + EP
         b2 = u3.r - EP < d2 and d2 < u3.r + EP
         if not b1 and not b2:
-            return None
+            return None, 0
         elif not b1 and b2:
-            return p2
+            return p2, 1
         elif b1 and not b2:
-            return p1
+            return p1, 1
         else:
             d1 = math.fabs(d1 - u3.r)
             d2 = math.fabs(d2 - u3.r)
-            return p1 if d1 < d2 else p2
+            return p1 if d1 < d2 else p2, 3
     return None
 
 def calc_list_core_cover_zone(s, p1, p2, u3):
@@ -275,10 +263,10 @@ def calc_list_precheck(l_points, func_fretch):
 def calc_list( l_points, EP, func_fretch ):
     if not calc_list_precheck(l_points, func_fretch):
         return None
-    pr = calc_list_core(l_points, EP, func_fretch)
+    pr, level = calc_list_core(l_points, EP, func_fretch)
     if pr:
         latitude, longitude = utm.to_latlon(pr.x, pr.y, pr.zone, pr.mark)
-        return latitude, longitude, pr.r
+        return latitude, longitude, pr.r, level
     return None
 
 

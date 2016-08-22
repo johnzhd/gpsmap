@@ -4,7 +4,7 @@ var walkpoints = [];
 
 function onShowWalkPoints(bShow) {
     if (bShow) {
-        base_ShowPoints(walkpoints);
+        base_ShowPoints(walkpoints, false, true);
     }
     else {
         base_HiddenPoints(walkpoints);
@@ -48,8 +48,8 @@ function my_success_function(data) {
     }
 
     RenewWalkPoint(data);
-    onShowWalkPoints(true);
     onShowWalkZone(b_with_line);
+    onShowWalkPoints(true);
 }
 
 

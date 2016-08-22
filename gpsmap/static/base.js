@@ -55,10 +55,12 @@ return;
 }
 
 // Init map table
-function base_InitMap(page){
+function base_InitMap(clickfunc){
     if (!my_global_map) {
         my_global_map = new BMap.Map("allmap");
     }
+    var lat = 22.823824;
+    var lng = 108.372686;
     my_global_map.addControl(new BMap.NavigationControl())
     my_global_map.enableScrollWheelZoom();   //启用滚轮放大缩小，默认禁用
     my_global_map.enableContinuousZoom();    //启用地图惯性拖拽，默认禁用
@@ -67,10 +69,13 @@ function base_InitMap(page){
     
     my_global_map.centerAndZoom(new BMap.Point(108.372686, 22.823824), 15);
     //my_global_map.centerAndZoom("南宁市", 15);
-    
-    my_global_map.addEventListener("click", base_showInfo);
+    if (!clickfunc){
+        clickfunc = base_showInfo
+    }
+    my_global_map.addEventListener("click", clickfunc);
 
     base_basecontrol();
+    return {"lat": lat, "lng": lng}
 }
 
 function base_auto_position(points){
@@ -82,14 +87,10 @@ function base_ClearPoint(p) {
     if (!p) {
         return;
     }
-    if (p.marker) {
-        my_global_map.removeOverlay(p.marker);
-        p.marker = null;
-    }
-    if (p.circle) {
-        my_global_map.removeOverlay(p.circle);
-        p.circle = null;
-    }
+    base_RemoveTags(p.marker);
+    p.marker = null;
+    base_RemoveTags(p.circle);
+    p.circle = null;
 }
 
 // clear points
@@ -109,23 +110,55 @@ function base_ClearPoints(points) {
 }
 
 // show points
-function base_ShowPoints(points) {
+function base_ShowPoints(points, last = false, jump = false) {
     var po_list = Array();
+    var tail = null;
     for (var i = 0; i < points.length; i++) {
         if (!points[i]) {
             continue;
         }
         try{
             if (points[i].marker) {
-                po_list.push(points[i].point);
-                my_global_map.addOverlay(points[i].marker);
+                if (!last){
+                    po_list.push(points[i].point);
+                }
+                tail = points[i];
+                base_AddTags(points[i].marker);
             }
         }
         catch (e) {
             console.log(e.message);
         }
     }
+    if (tail){
+        if (jump){
+            tail.marker.setAnimation(BMAP_ANIMATION_BOUNCE);
+        }
+        po_list.push(tail.point);
+    }
     base_auto_position(po_list);
+}
+
+function base_AddTags(tag){
+    if (tag){
+        try {
+            my_global_map.addOverlay(tag);
+        }
+        catch (e) {
+            console.log(e.message);
+        }
+    }
+}
+
+function base_RemoveTags(tag){
+    if (tag){
+        try {
+            my_global_map.removeOverlay(tag);
+        }
+        catch (e) {
+            console.log(e.message);
+        }
+    }
 }
 
 function base_HiddenPoints(points) {
@@ -133,17 +166,8 @@ function base_HiddenPoints(points) {
         if (!points[i]) {
             continue;
         }
-        try {
-            if (points[i].marker) {
-                my_global_map.removeOverlay(points[i].marker);
-            }
-            if (points[i].circle) {
-                my_global_map.removeOverlay(points[i].circle);
-            }
-        }
-        catch (e) {
-            console.log(e.message);
-        }
+        base_RemoveTags(points[i].marker);
+        base_RemoveTags(points[i].circle);
     }
 }
 
@@ -156,10 +180,10 @@ function base_ShowCircle(points, bShow) {
         try {
             if (points[i].marker) {
                 if (bShow) {
-                    my_global_map.addOverlay(points[i].circle);
+                    base_AddTags(points[i].circle);
                 }
                 else {
-                    my_global_map.removeOverlay(points[i].circle);
+                    base_RemoveTags(points[i].circle);
                 }
             }
         }
@@ -167,6 +191,20 @@ function base_ShowCircle(points, bShow) {
             console.log(e.message);
         }
     }
+}
+
+function base_MakePoint(lat, lng){
+    if (lat && lng){
+        return new BMap.Point(lng, lat);
+    }
+    return null;
+}
+
+function base_MakeCircle(point, dis){
+    if (point !== null && !isNaN(dis) ){
+        return new BMap.Circle(point, dis);
+    }
+    return null;
 }
 
 // create new point
@@ -207,7 +245,7 @@ function base_DataToPoints(datas, func_makelabel) {
     //]
     points = [];
     for (var i = 0; i < datas.length; i++) {
-        var label = func_makelabel(datas[i]);
+        var label = func_makelabel(datas[i], i);
         if (!label) {
             continue;
         }
@@ -332,7 +370,7 @@ function base_DataToPoints_CountSame(datas, func_makeLabel) {
     return points;
 }
 
-function base_Label_Device(data) {
+function base_Label_Device(data, i) {
     // data
     // {"device", "time"}
     try {
@@ -345,11 +383,11 @@ function base_Label_Device(data) {
     return "";
 }
 
-function base_Label_Calc(data) {
+function base_Label_Calc(data, i) {
     // data
     // {"distance", "time"}
     try{
-        return "(" + data["distance"] + ") " + data["time"];
+        return "(" + i.toString() + "): [" + data["distance"] + "] " + data["time"];
     }
     catch (e) {
         console.log(data);
@@ -358,8 +396,7 @@ function base_Label_Calc(data) {
     return "";
 }
 
-function base_CancelLink(lines) {
-    // clear old lines
+function walklines(lines, points, bShow){
     for (var i = 0; i < lines.length; i++) {
         if (lines[i]) {
             try {
@@ -370,17 +407,45 @@ function base_CancelLink(lines) {
             }
         }
     }
+    if (bShow){
+        for (var i = 0; i < points.length - 1; i++) {
+            if (lines.length < i + 1) {
+                lines.push(new BMap.WalkingRoute(my_global_map, { renderOptions: { map: my_global_map, autoViewport: true } }));
+            }
+            lines[i].search(points[i], points[i + 1]);
+        }
+    }
+}
+
+function curveLines(lines, points, bShow){
+    if (lines && lines.length > 0){
+        base_RemoveTags(lines[0]);
+        lines[0] = null;
+    }
+    if (bShow){
+        var purlPoint = [];
+        points.forEach(function(element) {
+            purlPoint.push(element.point);
+        }, this);
+        
+        var line = new BMapLib.CurveLine(purlPoint, {strokeColor:"blue", strokeWeight:3, strokeOpacity:0.5});
+        base_AddTags(line);
+        if (lines.length == 0){
+            lines.push(line);
+        } else{
+            lines[0] = line;
+        }
+    }
+}
+
+const linesEnter = curveLines;
+
+function base_CancelLink(lines) {
+    linesEnter(lines, null, false);
 }
 
 function base_LinkPoints(lines, points) {
-    base_CancelLink(lines);
-
-    for (var i = 0; i < points.length - 1; i++) {
-        if (lines.length < i + 1) {
-            lines.push(new BMap.WalkingRoute(my_global_map, { renderOptions: { map: my_global_map, autoViewport: true } }));
-        }
-        lines[i].search(points[i], points[i + 1]);
-    }
+    linesEnter(lines, points, true);
 }
 
 

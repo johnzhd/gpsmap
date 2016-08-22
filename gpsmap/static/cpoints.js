@@ -6,7 +6,7 @@ var walklines = [];
 
 function onShowWalkPoints(bShow) {
     if (bShow) {
-        base_ShowPoints(walkpoints);
+        base_ShowPoints(walkpoints, true, true);
     }
     else {
         base_HiddenPoints(walkpoints);
@@ -46,8 +46,59 @@ var time_max_second = null;
 
 var time_bar = null;
 
-function my_success_function(data) {
+var global_Interval_handle = NaN;
+var global_Interval = 3000;
 
+function autoInterval(start){
+    if (start){
+        if (isNaN(global_Interval_handle)){
+            global_Interval_handle = setInterval(ShowMe, global_Interval)
+        }
+    } else {
+        if (!isNaN(global_Interval_handle)){
+            clearInterval(global_Interval_handle);
+            global_Interval_handle = NaN;
+        }
+    }
+    return !isNaN(global_Interval_handle);
+}
+
+
+function StartAutoInterval(){
+    return autoIntervalUI(true);
+}
+function StopAutoInterval(){
+    return autoIntervalUI(false);
+}
+
+function autoIntervalUI(start){
+    var status = autoInterval(start);
+    if (status){
+        var left = $("#timeUnit_left")
+        left.css("backgroundColor", "#2db7f5");
+        left.css("color", "#fff");
+        left.val("手动")
+        left.click(StopAutoInterval);
+
+        var right = $("#timeUnit_right")
+        right.css("backgroundColor", "#2db7f5");
+        right.css("color", "#fff");
+        right.click(StopAutoInterval);
+    } else {
+        var left = $("#timeUnit_left")
+        left.css("backgroundColor", "white");
+        left.css("color", "black");
+        left.val("自动")
+        left.click(StartAutoInterval);
+
+        var right = $("#timeUnit_right")
+        right.css("backgroundColor", "white");
+        right.css("color", "black");
+        right.click(StartAutoInterval);
+    }
+}
+
+function my_success_function(data) {
     if (!time_bar) {
         time_min_second = base_time_now() - 30 * 24 * 3600; // 30 day before
         time_max_second = base_time_now() - 10 * 60;        // 10 minutes later
@@ -87,6 +138,7 @@ function LoadWalkPoints(id) {
 }
 
 
+
 function create_time_start_end() {
 
     function SliderControl() {
@@ -104,14 +156,14 @@ function create_time_start_end() {
 
         // 创建一个DOM元素
         var label1 = document.createElement("input");
-        label1.type = "text";
-        label1.value = "以";
-        label1.readOnly = true;
+        label1.type = "button";
+        label1.value = "自动";
+        //label1.readOnly = true;
         label1.id = "timeUnit_left";
         var label2 = document.createElement("input");
-        label2.type = "text";
+        label2.type = "button";
         label2.value = "分钟";
-        label2.readOnly = true;
+        //label2.readOnly = true;
         label2.id = "timeUnit_right";
         var inputU = document.createElement("input");
         inputU.type = "number";
@@ -137,11 +189,6 @@ function create_time_start_end() {
         inputE.readOnly = true;
         var pE = document.createElement("p");
         pE.appendChild(inputE);
-
-        //var p = document.createElement("p");
-        //p.appendChild(inputS);
-        //p.appendChild(inputE);
-
 
         var div = document.createElement("div");
         div.id = "slider-range";
@@ -207,6 +254,8 @@ function InitTimeBar() {
             time_uint = 60;
             time_start = base_time_second_to_string(time_min_second);
             time_end = base_time_second_to_string(base_time_now());
+
+            autoIntervalUI(!isNaN(global_Interval_handle));
         });
     }
 }

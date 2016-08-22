@@ -54,102 +54,36 @@ import calc_postion
 def fretch(obj):
     return obj["latitude"], obj["longitude"], obj["distance"]
 def debug_calc():
-    obj = {"data": [{"latitude": 22.809071, "distance": "300", "sendtime": "2016-08-08 01:44:05", "longitude": 108.39813, "time": "2016-08-08 14:37:50"}, {"latitude": 22.807072, "distance": "200", "sendtime": "2016-08-08 01:43:29", "longitude": 108.40105, "time": "2016-08-08 14:37:13"}, {"latitude": 22.804624, "distance": "200", "sendtime": "2016-08-08 01:41:53", "longitude": 108.398022, "time": "2016-08-08 14:35:37"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 01:41:09", "longitude": 108.401292, "time": "2016-08-08 14:34:53"}, {"latitude": 22.807081, "distance": "100", "sendtime": "2016-08-08 01:40:07", "longitude": 108.398076, "time": "2016-08-08 14:33:52"}, {"latitude": 22.809071, "distance": "300", "sendtime": "2016-08-08 01:39:44", "longitude": 108.39813, "time": "2016-08-08 14:33:30"}, {"latitude": 22.807072, "distance": "200", "sendtime": "2016-08-08 01:38:57", "longitude": 108.40105, "time": "2016-08-08 14:32:42"}, {"latitude": 22.804624, "distance": "200", "sendtime": "2016-08-08 01:37:06", "longitude": 108.398022, "time": "2016-08-08 14:30:52"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 01:36:16", "longitude": 108.401292, "time": "2016-08-08 14:30:00"}, {"latitude": 22.807081, "distance": "100", "sendtime": "2016-08-08 01:35:40", "longitude": 108.398076, "time": "2016-08-08 14:29:24"}, {"latitude": 22.807072, "distance": "200", "sendtime": "2016-08-08 01:34:21", "longitude": 108.40105, "time": "2016-08-08 14:28:05"}, {"latitude": 22.809071, "distance": "100", "sendtime": "2016-08-08 01:06:30", "longitude": 108.39813, "time": "2016-08-08 14:00:14"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 01:05:47", "longitude": 108.40105, "time": "2016-08-08 13:59:32"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 01:03:19", "longitude": 108.401292, "time": "2016-08-08 13:57:04"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 01:01:25", "longitude": 108.40105, "time": "2016-08-08 13:55:10"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 12:59:05", "longitude": 108.401292, "time": "2016-08-08 13:52:50"}, {"latitude": 22.809071, "distance": "100", "sendtime": "2016-08-08 12:57:51", "longitude": 108.39813, "time": "2016-08-08 13:51:36"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 12:57:05", "longitude": 108.40105, "time": "2016-08-08 13:50:52"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 12:54:35", "longitude": 108.401292, "time": "2016-08-08 13:48:19"}, {"latitude": 22.809071, "distance": "100", "sendtime": "2016-08-08 12:53:22", "longitude": 108.39813, "time": "2016-08-08 13:47:07"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 12:52:40", "longitude": 108.40105, "time": "2016-08-08 13:46:25"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 12:50:20", "longitude": 108.401292, "time": "2016-08-08 13:44:05"}, {"latitude": 22.809071, "distance": "100", "sendtime": "2016-08-08 12:48:56", "longitude": 108.39813, "time": "2016-08-08 13:42:42"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 12:48:10", "longitude": 108.40105, "time": "2016-08-08 13:41:55"}, {"latitude": 22.805165, "distance": "400", "sendtime": "2016-08-08 12:45:48", "longitude": 108.401292, "time": "2016-08-08 13:39:32"}, {"latitude": 22.809071, "distance": "100", "sendtime": "2016-08-08 12:44:27", "longitude": 108.39813, "time": "2016-08-08 13:38:13"}, {"latitude": 22.807072, "distance": "400", "sendtime": "2016-08-08 12:43:49", "longitude": 108.40105, "time": "2016-08-08 13:37:33"}], "success": 1}
-    data = obj["data"]
+    data = {"data": [{"latitude": 39.98672, "distance": "400", "sendtime": "2016-08-09 10:26:33", "longitude": 116.326718, "time": "2016-08-09 11:20:18"}, {"latitude": 39.986699, "distance": "100", "sendtime": "2016-08-09 10:25:58", "longitude": 116.323305, "time": "2016-08-09 11:19:44"}, {"latitude": 39.987259, "distance": "400", "sendtime": "2016-08-09 10:22:15", "longitude": 116.320197, "time": "2016-08-09 11:16:01"}, {"latitude": 39.98672, "distance": "400", "sendtime": "2016-08-09 10:21:39", "longitude": 116.326718, "time": "2016-08-09 11:15:25"}, {"latitude": 39.986699, "distance": "100", "sendtime": "2016-08-09 10:21:03", "longitude": 116.323305, "time": "2016-08-09 11:14:49"}, {"latitude": 39.988288, "distance": "200", "sendtime": "2016-08-09 10:13:09", "longitude": 116.323161, "time": "2016-08-09 11:06:54"}, {"latitude": 39.987259, "distance": "400", "sendtime": "2016-08-09 10:12:37", "longitude": 116.320197, "time": "2016-08-09 11:06:25"}, {"latitude": 39.98672, "distance": "400", "sendtime": "2016-08-09 10:12:04", "longitude": 116.326718, "time": "2016-08-09 11:05:49"}, {"latitude": 39.984432, "distance": "300", "sendtime": "2016-08-09 10:10:53", "longitude": 116.323583, "time": "2016-08-09 11:04:38"}, {"latitude": 39.988288, "distance": "100", "sendtime": "2016-08-09 10:06:08", "longitude": 116.323161, "time": "2016-08-09 10:59:54"}, {"latitude": 39.98672, "distance": "500", "sendtime": "2016-08-09 10:05:08", "longitude": 116.326718, "time": "2016-08-09 10:58:53"}, {"latitude": 39.986699, "distance": "200", "sendtime": "2016-08-09 10:04:37", "longitude": 116.323305, "time": "2016-08-09 10:58:22"}, {"latitude": 39.984432, "distance": "400", "sendtime": "2016-08-09 10:04:10", "longitude": 116.323583, "time": "2016-08-09 10:57:56"}, {"latitude": 39.988288, "distance": "100", "sendtime": "2016-08-09 09:59:49", "longitude": 116.323161, "time": "2016-08-09 10:53:35"}, {"latitude": 39.987259, "distance": "500", "sendtime": "2016-08-09 09:59:21", "longitude": 116.320197, "time": "2016-08-09 10:53:06"}, {"latitude": 39.98672, "distance": "500", "sendtime": "2016-08-09 09:58:49", "longitude": 116.326718, "time": "2016-08-09 10:52:34"}, {"latitude": 39.986699, "distance": "200", "sendtime": "2016-08-09 09:58:16", "longitude": 116.323305, "time": "2016-08-09 10:52:01"}], "success": 1}
+
+
+    data = data["data"]
     try:
-        sorted(data, lambda x,y: cmp(x["time"],y["time"]) )
+        data = sorted(data, lambda x,y: cmp(x["time"],y["time"]) )
     except Exception as e:
         print(e)
-    calc_postion.calc_list(data, 50, fretch)
+    ret = calc_postion.calc_list(data, 50, fretch)
+    print(ret)
+
+def debug_update_user():
+    ids = ["00060c8aa6448a1bcb83674c844ee70abcbf", "00064262a5ec66a35756390bac2ce83d299f"]
+    opt = backend.get_unique_opt()
+    print(opt.UpdateUser(ids))
 
 def debug_db_calc():
-    data = [{u'distance': u'400', u'loc': {u'coordinates': [108.40105, 22.807072]}, u'time': u'2016-08-08 13:37:33'},
-    {u'distance': u'100', u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 13:38:13'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 13:39:32'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 13:41:55'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 13:42:42'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 13:44:05'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 13:46:25'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 13:47:07'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 13:48:19'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 13:50:52'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 13:51:36'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 13:52:50'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 13:55:10'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 13:57:04'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 13:59:32'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 14:00:14'},
-    {u'distance': u'200',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 14:28:05'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.398076, 22.807081]},
-    u'time': u'2016-08-08 14:29:24'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 14:30:00'},
-    {u'distance': u'200',
-    u'loc': {u'coordinates': [108.398022, 22.804624]},
-    u'time': u'2016-08-08 14:30:52'},
-    {u'distance': u'200',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 14:32:42'},
-    {u'distance': u'300',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 14:33:30'},
-    {u'distance': u'100',
-    u'loc': {u'coordinates': [108.398076, 22.807081]},
-    u'time': u'2016-08-08 14:33:52'},
-    {u'distance': u'400',
-    u'loc': {u'coordinates': [108.401292, 22.805165]},
-    u'time': u'2016-08-08 14:34:53'},
-    {u'distance': u'200',
-    u'loc': {u'coordinates': [108.398022, 22.804624]},
-    u'time': u'2016-08-08 14:35:37'},
-    {u'distance': u'200',
-    u'loc': {u'coordinates': [108.40105, 22.807072]},
-    u'time': u'2016-08-08 14:37:13'},
-    {u'distance': u'300',
-    u'loc': {u'coordinates': [108.39813, 22.809071]},
-    u'time': u'2016-08-08 14:37:50'}]
-
-    # o = backend.opt()
-    # ret = o.check_and_calc_with_data(data, "3600", "00000002bd95bb252a7186330b228c3d8983552a")
-    ret = backend.unique_check_and_calc("00000002bd95bb252a7186330b228c3d8983552a", None, None, "3600")
+    ret = backend.unique_check_and_calc("00000002619568b478c919385fa768c63ec9a3dc", None, None, "3600")
     print("Done.\n")
     print(ret)
 
+
+
+def debug_one_calc():
+    ids = ["00060c8aa6448a1bcb83674c844ee70abcbf", "00064262a5ec66a35756390bac2ce83d299f"]
+    opt = backend.get_unique_opt()
+    print(opt.calc_list_id(ids))
+
 if __name__ == "__main__":
-    debug_db_calc()
+    debug_update_user()
 
 
 
