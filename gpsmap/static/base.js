@@ -1,11 +1,19 @@
 ﻿// 百度地图API功能
 
 var my_global_map = null;
+var my_global_rule = null;
 var global_tools = null;
 
 // ToDo Show gps when click on map
 function base_showInfo(e) {
     console.log(e.point.lng + ", " + e.point.lat);
+}
+
+function ClickRule(){
+    if (!my_global_rule){
+        return ;
+    }
+    my_global_rule.open();
 }
 
 function base_create_base_bar(){
@@ -30,11 +38,17 @@ function base_create_base_bar(){
         input2.id = "idHidden";
         input2.value="辅助";
         input2.onclick=function(event){HiddenMe();};
+        var input3 = document.createElement("input");
+        input3.type = "button";
+        input3.id = "idRule";
+        input3.value="测距";
+        input3.onclick=function(event){ClickRule();};
 
         var total = document.createElement("div");
         total.appendChild(a1);
         total.appendChild(input1);
         total.appendChild(input2);
+        total.appendChild(input3);
         map.getContainer().appendChild(total);
         // 将DOM元素返回
         return total;
@@ -43,15 +57,19 @@ function base_create_base_bar(){
     return myBaseBarControl;
 }
 
-function base_basecontrol(){
-if (global_tools){
-    return;
-}
+function base_basecontrol(mymap){
+    if (global_tools){
+        return;
+    }
     global_tools = base_create_base_bar();
-my_global_map.addControl(global_tools);
+    mymap.addControl(global_tools);
 
     console.log("Add");
-return;
+    return;
+}
+
+function base_GetMap(){
+    return my_global_map;
 }
 
 // Init map table
@@ -66,15 +84,15 @@ function base_InitMap(clickfunc){
     my_global_map.enableContinuousZoom();    //启用地图惯性拖拽，默认禁用
     my_global_map.addControl(new BMap.MapTypeControl());          //添加地图类型控件
     my_global_map.setMapStyle({ style: 'grayscale' });
-    
+
     my_global_map.centerAndZoom(new BMap.Point(108.372686, 22.823824), 15);
     //my_global_map.centerAndZoom("南宁市", 15);
     if (!clickfunc){
         clickfunc = base_showInfo
     }
     my_global_map.addEventListener("click", clickfunc);
-
-    base_basecontrol();
+    my_global_rule = new BMapLib.DistanceTool(my_global_map);
+    base_basecontrol(my_global_map);
     return {"lat": lat, "lng": lng}
 }
 
@@ -110,7 +128,7 @@ function base_ClearPoints(points) {
 }
 
 // show points
-function base_ShowPoints(points, last = false, jump = false) {
+function base_ShowPoints(points, last, jump) {
     var po_list = Array();
     var tail = null;
     for (var i = 0; i < points.length; i++) {
@@ -243,24 +261,48 @@ function base_DataToPoints(datas, func_makelabel) {
     //[
     //    {point, circle, marker, label}
     //]
-    points = [];
-    for (var i = 0; i < datas.length; i++) {
-        var label = func_makelabel(datas[i], i);
-        if (!label) {
-            continue;
-        }
+    var myMap = new Map();
+    datas.forEach(function(element) {
         try{
-            var dis = Number(datas[i]["distance"]);
-            var p = base_NewPoint(datas[i]["latitude"], datas[i]["longitude"], dis, label);
+        var mark = element["latitude"].toString() + "," + element["longitude"].toString();
+        var one = myMap.get(mark);
+        if (!one || one["time"] < element["time"]){
+            myMap.set(mark, element);
+        }
+        }catch(e){
+            console.log(e.message);
+        }
+        
+    }, this);
+
+    var tmp = [];
+    for (var value of myMap.values()){
+        tmp.push(value);
+    }
+    tmp.sort(function(a,b){
+        if (a["time"] == b["time"]){
+            return 0;
+        }
+        return  a["time"] < b["time"] ? -1 : 1;
+    });
+    var points = [];
+
+    var i = 0;
+    for (var value of tmp){
+        i++;
+        try{
+            var label = func_makelabel(value, i);
+            var dis = Number(value["distance"]);
+            var p = base_NewPoint(value["latitude"], value["longitude"], dis, label);
             if (p.point){
                 points.push(p);
             }
-
         }
-        catch (e) {
+        catch(e){
             console.log(e.message);
         }
     }
+
     return points;
 }
 

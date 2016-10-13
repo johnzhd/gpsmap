@@ -1,4 +1,7 @@
-﻿// walkpoints : point, circle, label( dis, lat, lng, time), marker
+﻿// calc points 
+
+
+// walkpoints : point, circle, label( dis, lat, lng, time), marker
 var walkpoints = [];
 // walklines : 
 var walklines = [];
@@ -37,7 +40,7 @@ function RenewWalkPoint(datas) {
 var my_g_uid = null;
 var b_with_line = true;
 
-var time_uint = 60;
+var time_uint = 10;
 var time_start = null;
 var time_end = null;
 
@@ -212,10 +215,12 @@ function create_time_start_end() {
 
 function InitTimeBar() {
     time_bar = create_time_start_end();
-    if (time_bar) {
-        base_add_control(time_bar);
+    if (!time_bar){
+        console.error("inittimebar err.");
+        return ;
     }
-    if (time_bar) {
+    base_add_control(time_bar);
+    
         $(function () {
             $("#timeUnit").change(function(event){
                 
@@ -257,7 +262,6 @@ function InitTimeBar() {
 
             autoIntervalUI(!isNaN(global_Interval_handle));
         });
-    }
 }
 
 

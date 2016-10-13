@@ -1,3 +1,5 @@
+// near points
+
 // walkpoints : point, circle, label( dis, lat, lng, time), marker
 
 // point

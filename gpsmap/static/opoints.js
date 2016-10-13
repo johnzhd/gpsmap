@@ -1,4 +1,7 @@
-﻿// walkpoints : point, circle, label( dis, lat, lng, time), marker
+﻿// origin points
+
+
+// walkpoints : point, circle, label( dis, lat, lng, time), marker
 
 var walkpoints = [];
 

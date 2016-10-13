@@ -15,7 +15,6 @@ function onShowDevice(bShow) {
 var global_device_click = false;
 
 function OnDeviceClickEvent(point) {
-
 }
 
 function RenewDevicePoint(datas) {

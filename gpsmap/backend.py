@@ -13,6 +13,8 @@ from pprint import pprint
 
 import md5
 
+from baselib import error_print
+
 
 global_db_name = "gpsmapName"
 global_db_url = "mongodb://gpsmap:gpsmap@127.0.0.1:27017/"+global_db_name
@@ -75,7 +77,7 @@ def md5String(s):
         s = s.encode(encoding="utf-8")
         return md5.new(s).hexdigest()
     except Exception as e:
-        print("{0} --- {1}".format(__name__, e))
+        error_print(e)
         return None
 
 def CreateUID(obj):
@@ -101,7 +103,7 @@ def CreateUID(obj):
             return obj[global_key_uid]
         return ret + ret_m
     except Exception as e:
-        print("{0} -- {1}".format(__name__, e))
+        error_print(e)
         return None
 
 
@@ -237,7 +239,8 @@ class opt():
             count = self.produce_bulk(obj, global_db_origin_collection, global_db_user_collection )
             return count
         except Exception as e:
-            print("{0} ---- {1}".format(__name__, e), obj)
+            error_print(e)
+            print(obj)
             pass
         return None
     def produce_obj(self, data):
@@ -245,7 +248,7 @@ class opt():
             obj = json.loads(data)
             return obj
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
             return None
     def produce_bulk(self, obj, opoints, users):
         if not obj:
@@ -375,7 +378,7 @@ class opt():
                 ret.append(d)
             return ret
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return ret
 
 
@@ -482,7 +485,7 @@ class opt():
                 count = result['nUpserted'] + result['nModified']
                 return count
             except Exception as e:
-                print("{0}----{1}".format(__name__, e))
+                error_print(e)
         return None
     def calc_one_id(self, i, u_coll, u_bulk, tunit):
         last_time = None
@@ -519,7 +522,7 @@ class opt():
                 f = None
             return count
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
 
     def UpdateUser(self, ids):
@@ -549,7 +552,7 @@ class opt():
             count =  result['nModified']
             return count
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
 
 
@@ -611,13 +614,64 @@ class opt():
     '''
     UI action
     '''
+    def create_filter_for_user(self, obj):
+        regex_list = ["name", "sign", "province", "city"]
+        bool_list = {"country": "CN"}
+        select_list = {"gender": ("female", "male")}
+        match_list = ["id", "device"]
+        gte_list = ["ocount", "pcount"]
+        time_list = ["start", "end"]
 
-    def show_name(self, name):
+        for key in ["ocount", "pcount"]:
+            if key in obj and obj[key] is not None:
+                obj[key] = int(obj[key])
+
         f = {}
-        if name:
-            f['name'] =  {'$regex': name, '$options': "i"}
-        c = {"_id": 0, "name": 1, "time": 1, "id": 1, "device": 1, "ocount": 1, "pcount": 1,
-            "img":1, "sign": 1, global_key_gender: 1, "sign": 1}
+        for key in obj:
+            if not obj[key]:
+                continue
+            if key in regex_list:
+                f[key] = {'$regex': obj[key], '$options': "i"}
+                continue
+            if key in bool_list:
+                if obj[key] == bool_list[key]:
+                    f[key] = obj[key]
+                else:
+                    f[key] = {"$not": {"$eq": bool_list[key]}}
+                continue
+            if key in select_list:
+                try:
+                    s = str(obj[key]).lower()
+                    if s in select_list[key]:
+                        f[key] = s
+                except Exception as e:
+                    pass
+                continue
+            if key in match_list:
+                 f[key] = obj[key]
+                 continue
+            if key in gte_list:
+                f[key] = {"$gte": obj[key]}
+                continue
+            if key in time_list:
+                obj[key] = string_standard(obj[key])
+                if "time" not in f:
+                    f["time"] = {}
+                if key == "start":
+                    f["time"]["$gte"] = obj[key]
+                elif key == "end":
+                    f["time"]["$lte"] = obj[key]
+                continue
+        return f
+    def create_row_for_user(self):
+        return {"_id": 0,
+            "name": 1, "time": 1, "id": 1,
+            "device": 1, "ocount": 1, "pcount": 1,
+            "country":1, "province":1, "city":1,
+            "img":1, "sign": 1, global_key_gender: 1}
+    def show_search(self, obj):
+        f = self.create_filter_for_user(obj)
+        c = self.create_row_for_user()
         try:
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_user_collection)
@@ -627,11 +681,23 @@ class opt():
                 ret.append(d)
             return ret
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
-    def origin_points_uni(self, l):
-        
-        pass
+
+    def show_name(self, name):
+        f = self.create_filter_for_user({"name": name})
+        c = self.create_row_for_user()
+        try:
+            db = self.connect.get_database(global_db_name)
+            collection = db.get_collection(global_db_user_collection)
+            r = collection.find(f, c).sort("time", pymongo.DESCENDING)
+            ret = []
+            for d in r:
+                ret.append(d)
+            return ret
+        except Exception as e:
+            error_print(e)
+        return None
     def origin_points(self, id, start, end):
         f = {"id": id}
         if start:
@@ -646,7 +712,8 @@ class opt():
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_origin_collection)
             r = collection.find(f, c).sort("time", pymongo.DESCENDING)
-            uniset = {}
+
+            ret = []
             for d in r:
                 tmp = {}
                 if "loc" in d and "coordinates" in d["loc"] and len(d["loc"]["coordinates"]) > 1:
@@ -664,14 +731,62 @@ class opt():
                 if "distance" in d:
                     tmp["distance"] = d["distance"]
                 
+                ret.append(tmp)
+            return ret
+        except Exception as e:
+            error_print(e)
+        return None
+    def origin_points_uni(self, id, start, end):
+        f = {"id": id}
+        if start:
+            f["time"]={}
+            f["time"]["$gte"]=start
+        if end:
+            if "time" not in f:
+                f["time"]={}
+            f["time"]["$lte"]=end
+        c = {"_id":0, "loc.coordinates": 1, "time": 1, "distance": 1, "sendtime": 1}
+        try:
+            db = self.connect.get_database(global_db_name)
+            collection = db.get_collection(global_db_origin_collection)
+            r = collection.find(f, c).sort("time", pymongo.DESCENDING)
+
+            uniset = {}
+            min_time = None
+            for d in r:
+                tmp = {}
+                if "loc" in d and "coordinates" in d["loc"] and len(d["loc"]["coordinates"]) > 1:
+                    tmp["latitude"] = d["loc"]["coordinates"][1]
+                    tmp["longitude"] = d["loc"]["coordinates"][0]
+                else:
+                    continue
+                if "time" in d:
+                    tmp["time"] = d["time"]
+                else:
+                    continue
+
+                if "sendtime" in d:
+                    tmp["sendtime"] = d["sendtime"]
+                if "distance" in d:
+                    tmp["distance"] = d["distance"]
+                
+                if not min_time or min_time["time"] > tmp["time"]:
+                    min_time = tmp;
+
                 if (tmp["latitude"], tmp["longitude"]) not in uniset or uniset[(tmp["latitude"], tmp["longitude"])]["time"] < tmp["time"]:
                     uniset[(tmp["latitude"], tmp["longitude"])] = tmp;
+
             ret = []
+            if min_time:
+                if  (min_time["latitude"], min_time["longitude"]) in uniset and uniset[(min_time["latitude"], min_time["longitude"])]["time"] == min_time["time"]:
+                    del uniset[(min_time["latitude"], min_time["longitude"])]
+                ret.append(min_time)
+
             for one in uniset.itervalues():
                 ret.append(one)
             return ret
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
 
 
@@ -679,8 +794,8 @@ class opt():
     Device Action
     '''
 
-    def set_device(self, device, la, lo):
-        f = {"device": device}
+    def set_device(self, task, device, la, lo):
+        f = {"device": device, "task": task}
         data ={"$set": {"device": device,
                         "loc": {"type": "Point", "coordinates" : [lo, la]},
                         "time": time_now()} }
@@ -690,12 +805,104 @@ class opt():
             r = collection.update_one(f, data, True)
             return r.modified_count or r.upserted_id
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
 
+    def device_obj(self, task, data):
+        try:
+            obj = json.loads(data)
+            tmp = []
+            task_len = len(task)
+            max_name = ''
+            name = "!"
+            for one in obj:
+                if "latitude" not in one or "longitude" not in one:
+                    continue
+                name = "!"
+                if "device" in one and one["device"][0:task_len] == task:
+                    name = str(one["device"])
+                    if max_name < name:
+                        max_name = name
+                tmp.append((name, one["latitude"], one["longitude"]))
+            tmp = sorted(tmp, key=lambda x: x[0])
+            number = 0
+            if max_name:
+                try:
+                    number = int(max_name[task_len:])
+                except Exception as e:
+                    error_print(e)
+                    pass
+            if number < 1:
+                number = 1
+            else:
+                number += 1
+            ret = {}
+            
+            for one in tmp:
+                name = one[0]
+                if name in ret or name == "!":
+                    name = "{0}{1:04d}".format(task, number)
+                    number += 1
+                ret[name] = (one[1], one[2])
+            return ret
+        except Exception as e:
+            error_print(e)
+            pass
+        return None
 
-    def get_device(self, device):
-        f = {"device": device}
+    def setall_device(self, task, data):
+        # find all task point
+        # loop data
+        # bulk insert update delete
+        # 
+        # 
+        obj = self.device_obj(task, data)
+        if not obj:
+            if data is None:
+                return None
+            ### remove all
+            return self.delete_all_device(task)
+        f = {"task": task}
+        c = {"_id": 1, "device": 1, "loc": 1, "time": 1}
+        action = []
+        db = self.connect.get_database(global_db_name)
+        collection = db.get_collection(global_db_device_collection)
+        bulk = collection.initialize_unordered_bulk_op()
+        it = collection.find(f, c).sort("time", pymongo.DESCENDING)
+        count = 0
+        for one in it:
+            if "device" not in one or one["device"] not in obj:
+                bulk.find({"_id": one["_id"]}).remove()
+                count += 1
+                continue
+            tmp = obj[one["device"]]
+            data = {
+                "$set": {
+                    "device": one["device"],
+                    "loc":{"type": "Point", "coordinates": [tmp[1], tmp[0]]},
+                    "time": time_now(),
+                    "task": task
+                    }
+                }
+            bulk.find({"_id": one["_id"]}).upsert().update(data)
+            count += 1
+            del obj[one["device"]]
+        for key in obj:
+            data = {
+                "device": key,
+                "loc": {"type": "Point", "coordinates": [obj[key][1], obj[key][0]]},
+                "time": time_now(),
+                "task": task
+                }
+            bulk.insert(data)
+            count += 1
+        result = bulk.execute()
+        count = result['nInserted'] +  result['nUpserted'] + result['nModified'] + result['nRemoved']
+        if count:
+            return self.get_device_all(task)
+        return None
+    def get_device(self, task, device):
+        f = {"device": device, "task": task}
         c = {"_id": 0, "device": 1, "loc": 1, "time": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -710,19 +917,28 @@ class opt():
                             })
                 return ret
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
-    def delete_device(self, device):
-        f = {"device": device}
+    def delete_device(self, task, device):
+        f = {"device": device, "task": task}
         try:
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_device_collection)
             return collection.delete_one(f).deleted_count > 0
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
-    def get_device_all(self):
-        f = {}
+    def delete_all_device(self, task):
+        f = {"task": task}
+        try:
+            db = self.connect.get_database(global_db_name)
+            collection = db.get_collection(global_db_device_collection)
+            return collection.delete_many(f).deleted_count
+        except Exception as e:
+            error_print(e)
+        return None
+    def get_device_all(self, task):
+        f = {"task": task}
         c = {"_id": 0, "device": 1, "loc": 1, "time": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -747,7 +963,7 @@ class opt():
                     } )
             return ret
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
     def delete_information(self, t):
         if not t:
@@ -771,7 +987,7 @@ class opt():
                 count = result.deleted_count
             return count
         except Exception as e:
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
         return None
 
 global_unique_opt_obj = None
@@ -787,7 +1003,7 @@ def get_unique_opt():
             global_unique_opt_obj = opt()
         except Exception as e:
             global_unique_opt_obj = None
-            print("{0} --- {1}".format(__name__, e))
+            error_print(e)
             pass
     global_unique_opt_obj_mx.release()
     return global_unique_opt_obj
@@ -824,35 +1040,49 @@ def unique_show_name(name):
     obj = get_unique_opt()
     if not obj:
         return None
-    ret = obj.show_name(name)
+    ret = obj.show_search({"name":name})
     return ret
 
-def unique_set_device(device, la, lo):
+def unique_show_search(args):
     obj = get_unique_opt()
     if not obj:
         return None
-    ret = obj.set_device(device, la, lo)
+    ret = obj.show_search(args)
     return ret
 
-def unique_get_device(device):
+def unique_set_device(task, device, la, lo):
     obj = get_unique_opt()
     if not obj:
         return None
-    ret = obj.get_device(device)
+    ret = obj.set_device(task, device, la, lo)
     return ret
 
-def unique_get_device_all():
+def unique_setall_device(task, data):
     obj = get_unique_opt()
     if not obj:
         return None
-    ret = obj.get_device_all()
+    ret = obj.setall_device(task, data)
     return ret
 
-def unique_delete_device(device):
+def unique_get_device(task, device):
     obj = get_unique_opt()
     if not obj:
         return None
-    ret = obj.delete_device(device)
+    ret = obj.get_device(task, device)
+    return ret
+
+def unique_get_device_all(task):
+    obj = get_unique_opt()
+    if not obj:
+        return None
+    ret = obj.get_device_all(task)
+    return ret
+
+def unique_delete_device(task, device):
+    obj = get_unique_opt()
+    if not obj:
+        return None
+    ret = obj.delete_device(task, device)
     return ret
 
 def unique_delete_information(t):

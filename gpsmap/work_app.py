@@ -7,6 +7,8 @@ import json
 
 import io
 
+from baselib import error_print
+
 from flask import Flask, render_template, make_response
 from flask import request
 from flask_restful import reqparse, abort, Api, Resource
@@ -18,9 +20,13 @@ api_loader = Api(app)
 parser = reqparse.RequestParser()
 for pa in ['la1', 'lo1', 'd1',
            'la2', 'lo2', 'd2',
-           'la3', 'lo3', 'd3', 'EP', 'data', 'name', 'id',
+           'la3', 'lo3', 'd3', 'EP',
+           'data', 'name', 'id', 'task',
            'start', 'end', 'tunit', 'count',
-           'device', 'action', 'latitude', 'longitude']:
+           'device', 'action', 'latitude', 'longitude',
+           'sign', 'gender', 'country', 'province', 'city',
+           'ocount', 'pcount',
+           ]:
     parser.add_argument(pa)
 
 def html_template(page):
@@ -37,10 +43,6 @@ def html(page):
         args["id"] = ''
     return render_template('template_html.html', **args)
 
-## Show Main page
-@app.route('/', methods=['GET'])
-def index():
-    return html_template("index")
 
 ## For debug show demo page
 @app.route('/demo', methods=['GET'])
@@ -62,6 +64,12 @@ def opoints():
 @app.route('/npoints', methods=['GET'])
 def npoints():
     return html_template("npoints")
+
+## Show device points page
+@app.route('/dpoints', methods=['GET'])
+def dpoints():
+    return html_template("dpoints")
+
 
 
 
@@ -118,7 +126,7 @@ def upload():
 def show():
     args = parser.parse_args()
     try:
-        ret = backend.unique_show_name(args['name'] or None)
+        ret = backend.unique_show_search(args)
         if ret:
             data = { "success": 1,
                     "data": ret}
@@ -165,7 +173,6 @@ def near():
                 return ret
     except Exception as e:
         print("{0} {1}".format(__name__, e))
-        pass
     return '{"success": 0}'
 
 
@@ -183,18 +190,27 @@ def origin():
             return ret
     except Exception as e:
         print("{0} {1}".format(__name__, e))
-        pass
     return '{"success": 0}'
 
 @app.route("/device", methods=['GET', 'POST'])
 def device():
     args = parser.parse_args()
-
     a = 'get'
+    task = "node"
     if args['action']:
         a = args['action'].lower()
+    if args['task'] and len(args['task']):
+        task = args['task']
+    if a == 'setall':
+        ret = backend.unique_setall_device(task, args['data'])
+        if ret:
+            data = {"success": 1,
+                    "data": ret}
+            ret = json.dumps(data, indent=None)
+            return ret
+        return '{"success": 0}'
     if a == 'getall':
-        ret = backend.unique_get_device_all()
+        ret = backend.unique_get_device_all(task)
         if ret:
             data = {"success": 1,
                     "data": ret}
@@ -204,13 +220,13 @@ def device():
         return '{"success": 0}'
 
     if a == 'set' and args['latitude'] and  args['longitude']:
-        if backend.unique_set_device(args['device'], float(args['latitude']), float(args['longitude'])):
+        if backend.unique_set_device(task, args['device'], float(args['latitude']), float(args['longitude'])):
             return '{"success": 1}'
     elif a == 'delete':
-        if backend.unique_delete_device(args['device']):
+        if backend.unique_delete_device(task, args['device']):
             return '{"success": 1}'
     else:
-        ret = backend.unique_get_device(args['device'])
+        ret = backend.unique_get_device(task, args['device'])
         if ret:
             data = {"success": 1,
                     "data": ret}
@@ -233,3 +249,38 @@ def becareful():
         return '{"success": 1}'
     return '{"success": 0}'
 
+
+
+
+
+
+#main enter
+
+global_main_enter = {}
+
+for key in ["cpoints", "opoints", "npoints", "dpoints"]:
+    global_main_enter[key] = html_template
+
+for key in ["demo", "name"]:
+    global_main_enter[key] = html
+
+global_main_enter["calc"] = calc
+
+## Show Main page
+@app.route('/', methods=['GET'])
+def index():
+    return html_template("index")
+
+@app.route("/<action>", methods=['GET', 'POST'])
+def enter(action):
+    try:
+        action = action.lower()
+    except Exception as e:
+        error_print(e)
+        abort(404)
+        return
+    if action not in global_main_enter:
+        abort(404)
+        return
+    function = global_main_enter[action]
+    return function(action)
