@@ -82,8 +82,13 @@ def debug_one_calc():
     opt = backend.get_unique_opt()
     print(opt.calc_list_id(ids))
 
+
+def debug_distinct():
+    opt = backend.get_unique_opt()
+    print(opt.get_care_country(None, None))
+
 if __name__ == "__main__":
-    debug_update_user()
+    debug_distinct()
 
 
 

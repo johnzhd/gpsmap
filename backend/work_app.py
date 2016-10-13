@@ -25,7 +25,7 @@ for pa in ['la1', 'lo1', 'd1',
            'start', 'end', 'tunit', 'count',
            'device', 'action', 'latitude', 'longitude',
            'sign', 'gender', 'country', 'province', 'city',
-           'ocount', 'pcount',
+           'ocount', 'pcount', 'distance'
            ]:
     parser.add_argument(pa)
 
@@ -44,44 +44,7 @@ def html(page):
     return render_template('template_html.html', **args)
 
 
-## For debug show demo page
-@app.route('/demo', methods=['GET'])
-def demo():
-    return html("demo")
-
-## Show calc points page
-@app.route('/cpoints', methods=['GET'])
-def cpoints():
-    return html_template("cpoints")
-
-## Show calc points page
-@app.route('/opoints', methods=['GET'])
-def opoints():
-    return html_template("opoints")
-
-
-## Show near points page
-@app.route('/npoints', methods=['GET'])
-def npoints():
-    return html_template("npoints")
-
-## Show device points page
-@app.route('/dpoints', methods=['GET'])
-def dpoints():
-    return html_template("dpoints")
-
-
-
-
-@app.route('/name', methods=['GET'])
-def js_page():
-    return html("name")
-
-
-
-
-@app.route('/calc', methods=['GET'])
-def calc():
+def calc(unuse):
     args = parser.parse_args()
     try:
         la1 = float(args['la1'])
@@ -100,16 +63,14 @@ def calc():
             EP = 100
 
         r = calc_postion.calc(la1, lo1, d1, la2, lo2, d2, la3, lo3, d3, EP)
-        if not r:
-            return '{"success": 0}'
-        # calc
-        return  '{{"success": 1, "la":{0}, "lo":{1}, "dis":{2} }}'.format( r[0], r[1], r[2] )
+        if r:
+            return  '{{"success": 1, "la":{0}, "lo":{1}, "dis":{2} }}'.format( r[0], r[1], r[2] )
     except Exception as e:
-        return '{"success": 0}'
+        error_print(e)
+    return '{"success": 0}'
 
 
-@app.route("/upload", methods=['GET', 'POST'])
-def upload():
+def upload(unuse):
     args = parser.parse_args()
     try:
         if 'data' not in args or not args['data']:
@@ -117,13 +78,11 @@ def upload():
         if backend.unique_push_data(args['data']):
             return '{"success": 1}'
     except Exception as e:
-        print("{0} {1}".format(__name__, e))
-        pass
+        error_print(e)
     return '{"success": 0}'
 
 
-@app.route("/show", methods=['GET', 'POST'])
-def show():
+def show(unuse):
     args = parser.parse_args()
     try:
         ret = backend.unique_show_search(args)
@@ -133,13 +92,11 @@ def show():
             ret = json.dumps(data, indent= None)
             return ret
     except Exception as e:
-        print("{0} {1}".format(__name__, e))
+        error_print(e)
     return '{"success": 0}'
 
 
-
-@app.route("/result", methods=['GET', 'POST'])
-def result():
+def result(unuse):
     args = parser.parse_args()
     if 'id' not in args or not args['id']:
         return '{"success": 0}'
@@ -151,17 +108,15 @@ def result():
             ret = json.dumps(data, indent=None)
             return ret
     except Exception as e:
-        print("{0} {1}".format(__name__, e))
-        pass
+        error_print(e)
     return '{"success": 0}'
 
-@app.route("/near", methods=['GET', 'POST'])
-def near():
+def near(unuse):
     args = parser.parse_args()
     try:
         latitude = float(args['latitude'])
         longitude = float(args['longitude'])
-        count = int(args['count'])
+        count = int(args['distance'])
         if not count:
             count = 20
         if latitude and longitude:
@@ -172,12 +127,11 @@ def near():
                 ret = json.dumps(data, indent=None)
                 return ret
     except Exception as e:
-        print("{0} {1}".format(__name__, e))
+        error_print(e)
     return '{"success": 0}'
 
 
-@app.route("/origin", methods=['GET', 'POST'])
-def origin():
+def origin(unuse):
     args = parser.parse_args()
     if 'id' not in args or not args['id']:
         return '{"success": 0}'
@@ -189,53 +143,53 @@ def origin():
             ret = json.dumps(data, indent=None)
             return ret
     except Exception as e:
-        print("{0} {1}".format(__name__, e))
+        error_print(e)
     return '{"success": 0}'
 
-@app.route("/device", methods=['GET', 'POST'])
-def device():
+
+
+def default_value(value, default, b):
+    if value is None or len(value) == 0:
+        return default
+    if b:
+        return value.lower()
+    return value
+    
+
+
+
+def device(unuse):
+    ##### 
+    ##### 
     args = parser.parse_args()
-    a = 'get'
-    task = "node"
-    if args['action']:
-        a = args['action'].lower()
-    if args['task'] and len(args['task']):
-        task = args['task']
+    a = default_value(args['action'], 'get', True)
+    task = default_value(args['task'], "node", False)
+    ret = None
     if a == 'setall':
         ret = backend.unique_setall_device(task, args['data'])
-        if ret:
-            data = {"success": 1,
-                    "data": ret}
-            ret = json.dumps(data, indent=None)
-            return ret
-        return '{"success": 0}'
-    if a == 'getall':
+    elif a == 'getall':
         ret = backend.unique_get_device_all(task)
-        if ret:
-            data = {"success": 1,
-                    "data": ret}
-            ret = json.dumps(data, indent=None)
-            return ret
-    if not args['device']:
-        return '{"success": 0}'
-
-    if a == 'set' and args['latitude'] and  args['longitude']:
-        if backend.unique_set_device(task, args['device'], float(args['latitude']), float(args['longitude'])):
-            return '{"success": 1}'
+    elif a == 'set':
+        if args['device'] and args['latitude'] and args['longitude']:
+            ret = backend.unique_set_device(task, args['device'], float(args['latitude']), float(args['longitude']))
     elif a == 'delete':
-        if backend.unique_delete_device(task, args['device']):
-            return '{"success": 1}'
+        if args['device']:
+            ret = backend.unique_delete_device(task, args['device'])
     else:
-        ret = backend.unique_get_device(task, args['device'])
-        if ret:
-            data = {"success": 1,
-                    "data": ret}
+        if args['device']:
+            ret = backend.unique_get_device(task, args['device'])
+
+    if ret:
+        data = {"success": 1,
+                "data": ret}
+        try:
             ret = json.dumps(data, indent=None)
             return ret
+        except Exception as e:
+            error_print(e)
     return '{"success": 0}'
 
-@app.route("/becareful", methods=['GET', 'POST'])
-def becareful():
+def becareful(unuse):
     args = parser.parse_args()
     action = args["action"]
     name = args["name"]
@@ -244,12 +198,28 @@ def becareful():
         return '{"success": 0}'
     if action not in ["users", "device", "points"]:
         return '{"success": 0}'
-    ret = backend.unique_delete_information(action)
-    if ret:
-        return '{"success": 1}'
+    try:
+        ret = backend.unique_delete_information(action)
+        if ret:
+            return '{{"success": 1, "data": {0} }}'.format(ret)
+    except Exception as e:
+        error_print(e)
     return '{"success": 0}'
 
 
+def get_country_list(unuse):
+    args = parser.parse_args()
+    try:
+        ret = backend.unique_Country(args['country'], args['province'], args['city'],
+            args['start'], args['end'])
+        if ret:
+            data = {"success": 1,
+                    "data": ret}
+            ret = json.dumps(data, indent=None)
+            return ret
+    except Exception as e:
+        error_print(e)
+    return '{"success": 0}'
 
 
 
@@ -257,21 +227,29 @@ def becareful():
 #main enter
 
 global_main_enter = {}
-
+# calc points /  origin points / near points / device points / 
 for key in ["cpoints", "opoints", "npoints", "dpoints"]:
     global_main_enter[key] = html_template
 
-for key in ["demo", "name"]:
+for key in ["name", "baidumap"]:
     global_main_enter[key] = html
 
 global_main_enter["calc"] = calc
+global_main_enter["upload"] = upload
+global_main_enter["show"] = show
+global_main_enter["result"] = result
+global_main_enter["near"] = near
+global_main_enter["origin"] = origin
+global_main_enter["device"] = device
+global_main_enter["becareful"] = becareful
+global_main_enter["country"] = get_country_list
 
 ## Show Main page
 @app.route('/', methods=['GET'])
 def index():
     return html_template("index")
 
-@app.route("/<action>", methods=['GET', 'POST'])
+@app.route("/api/<action>", methods=['GET', 'POST'])
 def enter(action):
     try:
         action = action.lower()

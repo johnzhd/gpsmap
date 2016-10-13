@@ -4,15 +4,18 @@ import pymongo
 import datetime
 import json
 
-import Queue
+from version import vQueue 
+from version import createMD5
+
 import threading
 import time
 
 import calc_postion
 from pprint import pprint
 
-import md5
 
+
+import english
 from baselib import error_print
 
 
@@ -35,6 +38,17 @@ global_key_name = "name"
 global_key_img = "img"
 global_key_gender = "gender"
 global_key_device = "device"
+
+global_key_province = "province"
+global_key_city = "city"
+global_key_country = "country"
+
+def get_ui_key(key):
+    return "ui" + key
+
+global_enum_circle = 1
+global_enum_box = 2
+global_enum_polygon = 3
 
 global_default_base_time = datetime.datetime(1970,1,1,0,0,0,0)
 global_default_uint_time = 60 * 10
@@ -75,7 +89,9 @@ calc:
 def md5String(s):
     try:
         s = s.encode(encoding="utf-8")
-        return md5.new(s).hexdigest()
+        m = createMD5()
+        m.update(s)
+        return m.hexdigest()
     except Exception as e:
         error_print(e)
         return None
@@ -89,7 +105,7 @@ def CreateUID(obj):
     md5key_list = [global_key_name]
 
     try:
-        m = md5.new()
+        m = createMD5()
         ret = ""
         for key in md5key_list:
             if key not in obj:
@@ -105,6 +121,11 @@ def CreateUID(obj):
     except Exception as e:
         error_print(e)
         return None
+
+def IsString(value):
+    if isinstance(country, (str, unicode, bytes, bytearray)):
+        return True
+    return False
 
 
 """
@@ -172,9 +193,12 @@ def string_to_time(s):
 
 def string_standard(s):
     try:
+        if not s:
+            return None
         return time_format(string_to_time(s))
     except Exception as e:
         return None
+
 def time_now():
     return time_format( datetime.datetime.now() )
 
@@ -197,10 +221,22 @@ def fretch_gps_from_data(data):
     except Exception as e:
         return None, None, None
 
+def filter_time(f, start, end):
+    start = string_standard(start)
+    end = string_standard(end)
+    if start:
+        f["time"] = {}
+        f["time"]["$gte"] = start
+    if end:
+        if "time" not in f:
+            f["time"] = {}
+        f["time"]["$lte"] = end
+    return f
+
 class opt():
     def __init__(self):
         self.connect = pymongo.MongoClient(global_db_url)
-        self.queue = Queue.Queue()
+        self.queue = vQueue.Queue()
         self.mutex = threading.Lock()
         self.thread = None
     def Start_Calc_Thread(self):
@@ -353,6 +389,11 @@ class opt():
             ret = unique.copy()
             ret.update(one)
             ret[global_key_uid] = uid
+
+            for key in [global_key_country, global_key_province, global_key_city]:
+                if key in ret and ret[key] in english.global_name_ui:
+                    ret[get_ui_key(key)] = english.global_name_ui[ret[key]]
+
             yield self.standardize_data(ret)
 
     def get_origin_points_data_from_db(self, i, start, end):
@@ -363,13 +404,7 @@ class opt():
             db = self.connect.get_database(global_db_name)
             collection = db.get_collection(global_db_calc_collection)
 
-            if start:
-                f["time"] = {}
-                f["time"]["$gte"] = start
-            if end:
-                if "time" not in f:
-                    f["time"] = {}
-                f["time"]["$lte"] = end
+            f = filter_time(f, start, end)
 
 
             origin_collection = db.get_collection(global_db_origin_collection)
@@ -555,20 +590,62 @@ class opt():
             error_print(e)
         return None
 
+    def CreateGeoFiler(self, enum, point, start, end):
+        if len(point) < 2 and ( "longitude" not in point or "latitude" not in point):
+            return None
 
-    def NearPoint(self, lat, lng, count):
-        if not count:
-            count = 20
-        point = {"type": "Point", "coordinates": [lng, lat]}
-        f = {"loc": {"$near": {"$geometry": point}}}
+        one = {}
+        if enum == global_enum_circle:
+            if "distance" in point and point["distance"]:
+                one["$centerSphere"] = [[point["longitude"], point["latitude"]],
+                    float(point["distance"]) / 6378100]  ## 6378.1 kilometers
+        elif enum == global_enum_box:
+            ## longitude left -- right
+            ## latitude bottom -- top
+            if len(point["longitude"]) > 1 or len(point["latitude"]) > 1:
+                lng = point["longitude"]
+                if lng[1] < lng[0]:
+                    lng[0], lng[1] = lng[1], lng[0]
+                lat = point["latitude"]
+                if lat[1] < lat[0]:
+                    lat[0], lat[1] = lat[1], lat[0]
+                one["$box"] = [[ lng[0], lat[0] ], [ lng[1], lat[1] ]]
+        elif enum == global_enum_polygon:
+            one["$polygon"] = []
+            for p in point:
+                if "longitude" in p and "latitude" in p:
+                    one["$polygon"].append([p["longitude"], p["latitude"]])
+        if one:
+            f = {}
+            f = filter_time(f, start, end)
+            f["loc"] = {}
+            f["loc"]["$geoWithin"] = one
+            return f
+        return None
+
+
+    def PolygonPoint(self, points, start, end):
+        f = self.CreateGeoFiler(global_enum_polygon, points, start, end)
+        if not f:
+            return None
+        return self.geoPoint(f)
+
+
+    def NearPoint(self, lat, lng, distance):
+        if not distance:
+            distance = 1000
+        point = {"latitude": lat, "longitude": lng, "distance": distance}
+        f = self.CreateGeoFiler(global_enum_circle, point, None, None)
+        print(f)
+        return self.geoPoint(f)
+
+    def geoPoint(self, f):
         c = {"_id": 0, "loc":1, "id": 1, "time": 1, "level": 1, "distance": 1}
         db = self.connect.get_database(global_db_name)
         coll = db.get_collection(global_db_calc_collection)
         it = coll.find(f, c) ## sort by $near
         ret = {}
         for one in it:
-            if len(ret) >= count:
-                break
             try:
                 if one['id'] not in ret:
                     ret[one['id']] = one
@@ -610,13 +687,13 @@ class opt():
         return ret
         ## update by user
 
-
     '''
     UI action
     '''
     def create_filter_for_user(self, obj):
         regex_list = ["name", "sign", "province", "city"]
-        bool_list = {"country": "CN"}
+        ui_list = ["province", "city"]
+        bool_list = {"country": ["CN"]}
         select_list = {"gender": ("female", "male")}
         match_list = ["id", "device"]
         gte_list = ["ocount", "pcount"]
@@ -633,11 +710,18 @@ class opt():
             if key in regex_list:
                 f[key] = {'$regex': obj[key], '$options': "i"}
                 continue
+            if key in ui_list:
+                one = obj[key].lower()
+                if one.islower(): ## if is acsII
+                    f[key] = {'$regex': one, '$options': "i"}
+                else:  ## if is chinese
+                    f["ui"+key] = {'$regex': one, '$options': "i"}
             if key in bool_list:
-                if obj[key] == bool_list[key]:
-                    f[key] = obj[key]
+                one = obj[key].upper()
+                if one == 'OTHER':
+                    f[key] = {"$nin": bool_list[key]}
                 else:
-                    f[key] = {"$not": {"$eq": bool_list[key]}}
+                    f[key] = one
                 continue
             if key in select_list:
                 try:
@@ -700,13 +784,7 @@ class opt():
         return None
     def origin_points(self, id, start, end):
         f = {"id": id}
-        if start:
-            f["time"]={}
-            f["time"]["$gte"]=start
-        if end:
-            if "time" not in f:
-                f["time"]={}
-            f["time"]["$lte"]=end
+        f = filter_time(f, start, end)
         c = {"_id":0, "loc.coordinates": 1, "time": 1, "distance": 1, "sendtime": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -738,13 +816,7 @@ class opt():
         return None
     def origin_points_uni(self, id, start, end):
         f = {"id": id}
-        if start:
-            f["time"]={}
-            f["time"]["$gte"]=start
-        if end:
-            if "time" not in f:
-                f["time"]={}
-            f["time"]["$lte"]=end
+        f = filter_time(f, start, end)
         c = {"_id":0, "loc.coordinates": 1, "time": 1, "distance": 1, "sendtime": 1}
         try:
             db = self.connect.get_database(global_db_name)
@@ -854,8 +926,9 @@ class opt():
         # find all task point
         # loop data
         # bulk insert update delete
-        # 
-        # 
+        #
+        #
+
         obj = self.device_obj(task, data)
         if not obj:
             if data is None:
@@ -989,6 +1062,59 @@ class opt():
         except Exception as e:
             error_print(e)
         return None
+    def get_location_translation(self, country, province, city):
+        ret = []
+        for value, name in [(country, "country"), (province, "province"), (city, "city"), ]:
+            if IsString(value):
+                ret.append({name: value, "ui": english.translation(value)})
+                continue
+            for one in value:
+                ret.append({name: value, "ui": english.translation(value)})
+        return ret
+    def get_location(self, country, province, city, start, end):
+        f, key = self.create_filter_for_location(country, province, city, start, end)
+        if not f and not key:
+            return self.get_location_translation(country, province, city)
+        try:
+            ret = []
+            db = self.connect.get_database(global_db_name)
+            collection = db.get_collection(global_db_user_collection)
+            it = collection.find(f).distinct(key)
+            for t in it:
+                if not t:
+                    continue
+                ret.append({key: t, "ui": english.translation(t)})
+            return ret
+        except Exception as e:
+            error_print(e)
+        return None
+
+    def create_filter_for_location(self, country, province, city, start, end):
+        f = {}
+        f = filter_time(f, start, end)
+        if not country:
+            return f, "country"
+
+        f["country"] = {}
+        if IsString(country):
+            f["country"] = country.upper()
+        else:
+            f["country"] = {"$in": country}
+        
+        if not province:
+            return f, "province"
+
+        f["proince"] = {}
+        if IsString(proince):
+            f["proince"] = proince.upper()
+        else:
+            f["proince"] = {"$in": proince}
+        
+        if not city:
+            return f, "city"
+
+        return None, None
+
 
 global_unique_opt_obj = None
 global_unique_opt_obj_mx = threading.Lock()
@@ -1019,8 +1145,6 @@ def unique_check_and_calc(id, start, end, tunit):
     obj = get_unique_opt()
     if not obj:
         return None
-    start = string_standard(start)
-    end = string_standard(end)
     ret = obj.check_and_calc(id, start, end, tunit)
     return ret
 
@@ -1028,8 +1152,6 @@ def unique_origin_points(id, start, end):
     obj = get_unique_opt()
     if not obj:
         return None
-    start = string_standard(start)
-    end = string_standard(end)
     ret = obj.origin_points(id, start, end)
     return ret
 
@@ -1098,4 +1220,11 @@ def unique_NearPoint(lat, lng, count):
     if not obj:
         return None
     ret = obj.NearPoint(lat, lng, count)
+    return ret
+
+def unique_Country(country, province, city, start, end):
+    obj = get_unique_opt()
+    if not obj:
+        return None
+    ret = obj.get_location(country, province, city, start, end)
     return ret
