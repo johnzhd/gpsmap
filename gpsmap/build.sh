@@ -78,6 +78,6 @@ systemctl start mongod
 chkconfig mongod on
 
 systemctl start emperor.uwsgi.service
-systemctl enabled emperor.uwsgi.service
+systemctl enable emperor.uwsgi.service
 
 
