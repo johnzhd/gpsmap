@@ -66,11 +66,12 @@ systemctl start mongod
 mongo 127.0.0.1:27017/admin ./system/mongo_admin.js 
 mongo 127.0.0.1:27017/gpsmap ./system/mongo_gpsmap.js 
 
-python ./db_build.py
 
-systemctl stop mongod
 cp -f ./system/mongod_auth.conf /etc/mongod.conf
 
+systemctl restart mongod
+
+python ./db_build.py
 
 ###
 
