@@ -16,7 +16,7 @@ import md5
 from baselib import error_print
 
 
-global_db_name = "gpsmapName"
+global_db_name = "gpsmap"
 global_db_url = "mongodb://gpsmap:gpsmap@127.0.0.1:27017/"+global_db_name
 
 global_db_origin_collection = "origin"
