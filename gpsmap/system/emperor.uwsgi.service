@@ -7,7 +7,7 @@
 
 [Unit]
 Description=uWSGI Emperor
-After=network.target nginx.service mysql.service
+After=network.target nginx.service mongod.service
 
 [Service]
 ExecStart=/usr/bin/uwsgi --ini /usr/share/gpsmap/uwsgi/emperor.ini
